@@ -13,6 +13,13 @@ from config import Config
 from utils.types import PATH
 
 
+def modify_discourse_text(df: pd.DataFrame) -> pd.DataFrame:
+    df.loc[
+        df.discourse_id == "56744a66949a", "discourse_text"
+    ] = "This whole thing is point less how they have us in here for two days im missing my education. We could have finished this in one day and had the rest of the week to get back on the track of learning. I've missed both days of weight lifting, algebra, and my world history that i do not want to fail again! If their are any people actually gonna sit down and take the time to read this then\n\nDO NOT DO THIS NEXT YEAR\n\n.\n\nThey are giving us cold lunches. ham and cheese and an apple, I am 16 years old and my body needs proper food. I wouldnt be complaining if they served actual breakfast. but because of Michelle Obama and her healthy diet rule they surve us 1 poptart in the moring. How does the school board expect us to last from 7:05-12:15 on a pop tart? then expect us to get A's, we are more focused on lunch than anything else. I am about done so if you have the time to read this even though this does not count. Bring PROPER_NAME a big Mac from mc donalds, SCHOOL_NAME, (idk area code but its in LOCATION_NAME)       \xa0    "
+    return df
+
+
 def load_train_df(path: PATH) -> pd.DataFrame:
     if Path(path).suffix == ".pq":
         train_df = pd.read_parquet(path)
@@ -21,16 +28,22 @@ def load_train_df(path: PATH) -> pd.DataFrame:
     return train_df
 
 
-def split_train_val(train_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def split_train_val(
+    train_df: pd.DataFrame, fold: int
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     if "fold" in train_df.columns:
-        raise NotImplementedError()
+        if fold == -1:
+            val_df = train_df[train_df["fold"] == 0].copy()
+        else:
+            val_df = train_df[train_df["fold"] == fold].copy()
+            train_df = train_df[train_df["fold"] != fold].copy()
     else:
         val_df = train_df.copy()
     return train_df, val_df
 
 
 def change_df_for_debug(train_df: pd.DataFrame) -> pd.DataFrame:
-    df = pd.DataFrame([train_df.loc[0, :].values for _ in range(len(train_df))])
+    df = pd.DataFrame([train_df.iloc[0, :].values for _ in range(len(train_df))])
     df.columns = train_df.columns
     return df
 

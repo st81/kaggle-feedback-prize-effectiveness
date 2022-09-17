@@ -13,6 +13,7 @@ import wandb
 from config import Config
 from data import CustomDataset
 from models.feedback_model import Net
+from models.util import load_checkpoint
 from scheduler import get_scheduler
 from utils.types import PATH
 
@@ -67,6 +68,13 @@ class TrainerNativePytorch:
 
         model = self.model_init(self.config)
         model.to(self.device)
+
+        if self.config.architecture.pretrained_weights != "":
+            try:
+                load_checkpoint(self.config, model)
+            except Exception as e:
+                print(e)
+                print("WARNING: could not load checkpoint")
 
         total_steps = len(self.train_dataset)
 

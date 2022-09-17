@@ -8,6 +8,7 @@ from tqdm import tqdm
 from args import prepare_args, prepare_parser
 from config import load_config
 from const import FILENAME
+from data import modify_discourse_text
 from utils.types import PATH
 
 
@@ -18,6 +19,14 @@ class FeedbackPrizeEffectivenessData:
         Path(self.save_dir).mkdir(parents=True, exist_ok=True)
 
         self.train_df = pd.read_csv(Path(self.data_dir) / "train.csv")
+
+    @property
+    def train_folded_path(self) -> str:
+        return Path(self.save_dir) / FILENAME.TRAIN_FOLDED
+
+    @property
+    def token_classification_path(self) -> str:
+        return Path(self.save_dir) / FILENAME.TOKEN_CLASSIFICATION
 
     def prepare_folded(self) -> None:
         for fold, (_, val_idx) in enumerate(
@@ -31,7 +40,60 @@ class FeedbackPrizeEffectivenessData:
         ):
             self.train_df.loc[val_idx, "fold"] = fold
         self.train_df["fold"] = self.train_df["fold"].astype(int)
+        essay_texts = {}
+        for filename in Path(self.data_dir).glob("train/*.txt"):
+            with open(filename, "r") as f:
+                lines = f.read()
+            essay_texts[filename.stem] = lines
+        self.train_df["essay_text"] = self.train_df["essay_id"].map(essay_texts)
         self.train_df.to_csv(Path(self.save_dir) / FILENAME.TRAIN_FOLDED, index=False)
+
+    def prepare_token_classification(self) -> None:
+        df = pd.read_csv(self.train_folded_path)
+        df = modify_discourse_text(df)
+
+        all_obs = []
+        for name, gr in tqdm(df.groupby("essay_id", sort=False)):
+            essay_text_start_end = gr["essay_text"].values[0]
+            token_labels = []
+            token_obs = []
+
+            end_pos = 0
+            for idx, row in gr.reset_index(drop=True).iterrows():
+                target_text = (
+                    row["discourse_type"] + " " + row["discourse_text"].strip()
+                )
+                essay_text_start_end = essay_text_start_end[
+                    :end_pos
+                ] + essay_text_start_end[end_pos:].replace(
+                    row["discourse_text"].strip(), target_text, 1
+                )
+
+                start_pos = essay_text_start_end[end_pos:].find(target_text)
+                if start_pos == -1:
+                    raise ValueError()
+                start_pos += end_pos
+
+                if idx == 0 and start_pos > 0:
+                    token_labels.append("O")
+                    token_obs.append(essay_text_start_end[:start_pos])
+
+                if start_pos > end_pos and end_pos > 0:
+                    token_labels.append("O")
+                    token_obs.append(essay_text_start_end[end_pos:start_pos])
+
+                end_pos = start_pos + len(target_text)
+                token_labels.append(row["discourse_effectiveness"])
+                token_obs.append(essay_text_start_end[start_pos:end_pos])
+
+                if idx == len(gr) - 1 and end_pos < len(essay_text_start_end):
+                    token_labels.append("O")
+                    token_obs.append(essay_text_start_end[end_pos:])
+            all_obs.append((name, token_labels, token_obs, row["fold"]))
+
+        pd.DataFrame(
+            all_obs, columns=["essay_id", "tokens", "essay_text", "fold"]
+        ).to_parquet(self.token_classification_path, index=False)
 
 
 class FeedbackPrize2021Data:
@@ -109,12 +171,14 @@ class FeedbackPrize2021Data:
 
 if __name__ == "__main__":
     args = prepare_args(prepare_parser())
-    config = load_config(args.config_dir)
-    config = load_config("config")
+    # config = load_config(args.config_path)
+    config = load_config("config/pretrain_2021.yaml")
 
-    FeedbackPrizeEffectivenessData(
+    feedback_prize_effectiveness_data = FeedbackPrizeEffectivenessData(
         config.base.feedback_prize_effectiveness_dir, config.base.input_data_dir
-    ).prepare_folded()
+    )
+    # feedback_prize_effectiveness_data.prepare_folded()
+    feedback_prize_effectiveness_data.prepare_token_classification()
 
     # feedback_prize_2021_data = FeedbackPrize2021Data(
     #     config.base.feedback_prize_2021_dir, config.base.input_data_dir

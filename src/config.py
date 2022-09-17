@@ -21,11 +21,13 @@ class Architecture:
     dropout: float
     gradient_checkpointing: bool
     add_wide_dropout: Optional[bool] = None
+    pretrained_weights: Optional[str] = ""
 
 
 @dataclass
 class Dataset:
     dataset_class: str
+    fold: int
     label_columns: str
     num_classes: int
     text_column: str
@@ -57,6 +59,8 @@ class Training:
     gradient_clip: float
     is_pseudo: bool
     learning_rate: float
+    loss_function: str
+    optimizer: str
     schedule: str
     warmup_epochs: float
     weight_decay: float

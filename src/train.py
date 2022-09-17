@@ -17,7 +17,9 @@ def train(config: Config, training_start_timestamp: str) -> None:
     load_dotenv()
     set_seed(config.environment.seed)
 
-    train_df, val_df = split_train_val(load_train_df(config.dataset.train_df_path))
+    train_df, val_df = split_train_val(
+        load_train_df(config.dataset.train_df_path), config.dataset.fold
+    )
     if config.environment.debug:
         train_df, val_df = change_df_for_debug(train_df), change_df_for_debug(val_df)
         train_df = train_df.loc[:1, :]
