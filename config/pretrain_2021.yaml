@@ -1,0 +1,33 @@
+architecture:
+  add_wide_dropout: false
+  backbone: microsoft/deberta-large
+  dropout: 0.1
+  gradient_checkpointing: true
+dataset:
+  dataset_class: feedback_dataset
+  label_columns: tokens
+  num_classes: 7
+  text_column: essay_text
+  train_df_path: input/feedback-prize-effectiveness-st/feedback_2021_pretrain.pq
+environment:
+  mixed_precision: true
+  num_workers: 4
+  report_to: ["wandb"]
+  seed: 1
+  debug: true
+tokenizer:
+  max_length: 254
+training:
+  add_types: false
+  batch_size: 2
+  differential_learning_rate: 1.0e-05
+  differential_learning_rate_layers: []
+  drop_last_batch: true
+  epochs: 2
+  grad_accumulation: 1
+  gradient_clip: 5
+  is_pseudo: false
+  learning_rate: 2.0e-05
+  schedule: Linear
+  warmup_epochs: 0.5
+  weight_decay: 0.001

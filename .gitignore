@@ -1,0 +1,10 @@
+input/
+output/
+
+__pycache__/
+
+py37/
+
+.env
+
+wandb/

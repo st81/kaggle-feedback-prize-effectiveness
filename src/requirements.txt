@@ -1,0 +1,18 @@
+--extra-index-url https://download.pytorch.org/whl/cu113
+numpy
+pandas
+torch==1.11.0+cu113
+transformers
+scikit-learn
+
+wandb
+kaggle
+sentencepiece
+
+python-dotenv
+pyarrow
+
+black
+
+ipykernel
+ipywidgets
