@@ -22,7 +22,7 @@ def train(config: Config, training_start_timestamp: str) -> None:
     )
     if config.environment.debug:
         train_df, val_df = change_df_for_debug(train_df), change_df_for_debug(val_df)
-        train_df = train_df.loc[:1, :]
+        train_df = train_df.loc[:50, :]
         val_df = val_df.loc[:1, :]
 
     train_dataset = CustomDataset(train_df, config, "train")
