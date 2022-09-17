@@ -1,10 +1,12 @@
+# data
 input/
 output/
+wandb/
 
+# python
 __pycache__/
-
 py37/
 
+# misc
 .env
-
-wandb/
+todo.md
