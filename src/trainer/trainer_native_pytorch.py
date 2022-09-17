@@ -193,6 +193,10 @@ class TrainerNativePytorch:
                             }
                         )
 
+            if self.config.training.epochs > 0:
+                checkpoint = {"model": model.state_dict()}
+                torch.save(checkpoint, self.save_dir / "checkpoint.pth")
+
             progress_bar = tqdm(range(len(eval_loader)))
             val_it = iter(eval_loader)
 
@@ -250,7 +254,3 @@ class TrainerNativePytorch:
             print(f"Validation metric: {metric}")
             if "wandb" in self.config.environment.report_to:
                 wandb.log({"val_log_loss": metric})
-
-            if self.config.training.epochs > 0:
-                checkpoint = {"model": model.state_dict()}
-                torch.save(checkpoint, self.save_dir / "checkpoint.pth")
