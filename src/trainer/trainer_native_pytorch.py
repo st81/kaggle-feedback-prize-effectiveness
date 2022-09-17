@@ -201,6 +201,9 @@ class TrainerNativePytorch:
                             }
                         )
 
+                del batch, output_dict, loss
+                gc.collect()
+
             if self.config.training.epochs > 0:
                 checkpoint = {"model": model.state_dict()}
                 torch.save(checkpoint, self.save_dir / "checkpoint.pth")
@@ -212,53 +215,55 @@ class TrainerNativePytorch:
             preds = []
             probabilities = []
             all_targets = []
-            for itr in progress_bar:
-                data = next(val_it)
-                batch = CustomDataset.batch_to_device(data, self.device)
 
-                if self.config.environment.mixed_precision:
-                    with autocast():
+            with torch.no_grad():
+                for itr in progress_bar:
+                    data = next(val_it)
+                    batch = CustomDataset.batch_to_device(data, self.device)
+
+                    if self.config.environment.mixed_precision:
+                        with autocast():
+                            output_dict = model(batch)
+                    else:
                         output_dict = model(batch)
-                else:
-                    output_dict = model(batch)
+
+                    if self.config.dataset.dataset_class == "feedback_dataset":
+                        for logits, word_start_mask, target in zip(
+                            output_dict["logits"],
+                            output_dict["word_start_mask"],
+                            output_dict["target"],
+                        ):
+                            # logits.shape: (batch_size * max_length * num_classes)
+                            # word_start_mask.shape: (batch_size * max_length)
+                            # target.shape: (batch_size * max_length)
+                            probs = (
+                                torch.softmax(logits[word_start_mask], dim=1)
+                                .detach()
+                                .cpu()
+                                .numpy()
+                            )  # shape: (num_word_start_mask_true, num_classes)
+                            targets = (
+                                target[word_start_mask].detach().cpu().numpy()
+                            )  # shape: (num_word_start_mask_true, )
+
+                            for p, t in zip(probs, targets):
+                                probabilities.append(p)
+                                if self.config.training.is_pseudo:
+                                    raise NotImplementedError
+                                else:
+                                    all_targets.append(t)
+                    else:
+                        raise NotImplementedError
 
                 if self.config.dataset.dataset_class == "feedback_dataset":
-                    for logits, word_start_mask, target in zip(
-                        output_dict["logits"],
-                        output_dict["word_start_mask"],
-                        output_dict["target"],
-                    ):
-                        # logits.shape: (batch_size * max_length * num_classes)
-                        # word_start_mask.shape: (batch_size * max_length)
-                        # target.shape: (batch_size * max_length)
-                        probs = (
-                            torch.softmax(logits[word_start_mask], dim=1)
-                            .detach()
-                            .cpu()
-                            .numpy()
-                        )  # shape: (num_word_start_mask_true, num_classes)
-                        targets = (
-                            target[word_start_mask].detach().cpu().numpy()
-                        )  # shape: (num_word_start_mask_true, )
-
-                        for p, t in zip(probs, targets):
-                            probabilities.append(p)
-                            if self.config.training.is_pseudo:
-                                raise NotImplementedError
-                            else:
-                                all_targets.append(t)
+                    metric = log_loss(
+                        all_targets,
+                        np.vstack(probabilities),
+                        eps=1e-7,
+                        labels=list(range(self.config.dataset.num_classes)),
+                    )
                 else:
                     raise NotImplementedError
-
-            if self.config.dataset.dataset_class == "feedback_dataset":
-                metric = log_loss(
-                    all_targets,
-                    np.vstack(probabilities),
-                    eps=1e-7,
-                    labels=list(range(self.config.dataset.num_classes)),
-                )
-            else:
-                raise NotImplementedError
-            print(f"Validation metric: {metric}")
-            if "wandb" in self.config.environment.report_to:
-                wandb.log({"val_log_loss": metric})
+                print(f"Validation metric: {metric}")
+                if "wandb" in self.config.environment.report_to:
+                    wandb.log({"val_log_loss": metric})
