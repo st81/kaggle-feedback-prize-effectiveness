@@ -83,10 +83,4 @@ def load_config(path: PATH) -> Config:
     _config = {}
     for k, v in load_yaml(path).items():
         _config[k] = getattr(config, k.capitalize())(**v)
-    return Config(
-        base=BaseConfig(**load_yaml(path.parent / "base.yaml")),
-        **_config
-        # dataset=Dataset(**_config["dataset"]),
-        # environment=Environment(**_config["environment"]),
-        # training=Training(**_config["training"]),
-    )
+    return Config(base=BaseConfig(**load_yaml(path.parent / "base.yaml")), **_config)
