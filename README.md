@@ -7,6 +7,12 @@ Not explicitly specified, commands must be run on gcp instance.
 - us-central1-c
 - A100 40GB
 
+## How to connect instance by ssh
+
+```sh
+gcloud compute ssh --zone "us-central1-c" "instance-1"  --project "sigma-night-266302"
+```
+
 ## Send required files
 
 **Run below command in local**
