@@ -1,3 +1,8 @@
+base:
+  feedback_prize_effectiveness_dir: input/feedback-prize-effectiveness/
+  feedback_prize_2021_dir: input/feedback-prize-2021/
+  input_data_dir: input/feedback-prize-effectiveness-st
+  output_dir: output
 architecture:
   add_wide_dropout: false
   backbone: microsoft/deberta-large
@@ -13,7 +18,7 @@ dataset:
 environment:
   mixed_precision: true
   num_workers: 4
-  report_to: ["wandb"]
+  report_to: []
   seed: 1
   debug: true
 tokenizer:

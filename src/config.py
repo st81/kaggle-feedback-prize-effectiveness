@@ -8,7 +8,7 @@ from utils.types import PATH
 
 
 @dataclass
-class BaseConfig:
+class Base:
     feedback_prize_effectiveness_dir: str
     feedback_prize_2021_dir: str
     input_data_dir: str
@@ -69,7 +69,7 @@ class Training:
 
 @dataclass
 class Config:
-    base: BaseConfig
+    base: Base
     architecture: Architecture
     dataset: Dataset
     environment: Environment
@@ -87,4 +87,4 @@ def load_config(path: PATH) -> Config:
     _config = {}
     for k, v in load_yaml(path).items():
         _config[k] = getattr(config, k.capitalize())(**v)
-    return Config(base=BaseConfig(**load_yaml(path.parent / "base.yaml")), **_config)
+    return Config(**_config)
