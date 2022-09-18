@@ -4,6 +4,7 @@ from argparse import ArgumentParser, Namespace
 def add_system_level_args(parent_parser: ArgumentParser) -> ArgumentParser:
     parser = parent_parser.add_argument_group("system_level")
     parser.add_argument("--config_path", type=str)
+    parser.add_argument("--create_kaggle_dataset", action="store_true")
     parser.add_argument("--use_kaggle_secret", action="store_true")
     parser.add_argument("--wandb_api_key", type=str, default=None)
     parser.add_argument("--wandb_group", type=str, default=None)

@@ -1,3 +1,6 @@
+COMPETITION_ABBREVIATION = "fpe"
+
+
 class _FILENAME:
     TRAIN_FOLDED = "train_folded.csv"
     TOKEN_CLASSIFICATION = "feedback_text_token_classification_v5.pq"
