@@ -17,6 +17,7 @@ from data import CustomDataset
 from models.feedback_model import Net
 from models.util import load_checkpoint
 from scheduler import get_scheduler
+from utils.seed import set_seed
 from utils.types import PATH
 
 
@@ -142,7 +143,7 @@ class TrainerNativePytorch:
         best_val_loss = np.inf
         optimizer.zero_grad()
         for epoch in range(self.config.training.epochs):
-            # set_seed(cfg.environment.seed + epoch)
+            set_seed(self.config.environment.seed + epoch)
 
             print(f"Epoch: {epoch}")
 
