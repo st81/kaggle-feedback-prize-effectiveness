@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from genericpath import isdir
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import yaml
@@ -85,6 +86,18 @@ def load_yaml(path: PATH) -> Dict[str, Any]:
 def load_config(path: PATH) -> Config:
     path = Path(path)
     _config = {}
+    if not path.is_file():
+        # If path is file, use first yaml in directory as config file.
+        path = list(path.glob("*.yaml"))[0]
     for k, v in load_yaml(path).items():
         _config[k] = getattr(config, k.capitalize())(**v)
     return Config(**_config)
+
+
+@dataclass
+class EnsembleConfig:
+    model_saved_dir: str
+
+
+def load_ensemble_configs(path: PATH) -> List[EnsembleConfig]:
+    return [EnsembleConfig(**c) for c in load_yaml(path)["configs"]]
