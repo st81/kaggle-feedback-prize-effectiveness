@@ -57,4 +57,5 @@ if __name__ == "__main__":
 
     submission = create_submission(df["discourse_id"].values, preds)
     print(submission)
+    Path(config.base.output_dir)
     submission.to_csv(Path(config.base.output_dir) / FILENAME.SUBMISSION, index=False)
