@@ -3,7 +3,15 @@ from pathlib import Path
 import subprocess
 from typing import List
 
+import numpy as np
+import pandas as pd
+
 from utils.types import PATH
+
+
+HUGGING_FACE_MODEL_NAME_TO_KAGGLE_DATASET = {
+    "microsoft/deberta-large": "../input/debertalarge"
+}
 
 
 def create_kaggle_dataset_metadata(dataset_id: str, save_dir: PATH) -> None:
@@ -110,3 +118,14 @@ def create_kaggle_kernel(
         save_dir,
     )
     subprocess.run(f"kaggle kernels push -p {save_dir}", shell=True)
+
+
+def create_submission(discourse_ids: List[str], preds: np.ndarray) -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "discourse_id": discourse_ids,
+            "Ineffective": preds[:, 2],
+            "Adequate": preds[:, 0],
+            "Effective": preds[:, 1],
+        }
+    )

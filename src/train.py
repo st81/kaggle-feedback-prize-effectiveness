@@ -27,6 +27,7 @@ def train(config: Config, save_dir: str) -> None:
         train_df, val_df = change_df_for_debug(train_df), change_df_for_debug(val_df)
         train_df = train_df.loc[:50, :]
         val_df = val_df.loc[:1, :]
+    print(f"Example label: {train_df[config.dataset.label_columns].values[0]}")
 
     train_dataset = CustomDataset(train_df, config, "train")
     val_dataset = CustomDataset(val_df, config, "val", train_dataset.label_encoder)

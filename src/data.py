@@ -5,12 +5,27 @@ from typing import Any, Dict, Optional, Tuple
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
+from tqdm import tqdm
 import torch
 from torch.utils.data import Dataset
 from transformers import AutoTokenizer
 
 from config import Config
+from const import LABEL_O_WHEN_TEST
+from utils.kaggle import HUGGING_FACE_MODEL_NAME_TO_KAGGLE_DATASET
 from utils.types import PATH
+
+
+def add_essay_text_column(
+    df: pd.DataFrame, data_dir: PATH, is_test: bool = False
+) -> pd.DataFrame:
+    essay_texts = {}
+    for filename in Path(data_dir).glob(f"{'test' if is_test else 'train'}/*.txt"):
+        with open(filename, "r") as f:
+            lines = f.read()
+        essay_texts[filename.stem] = lines
+    df["essay_text"] = df["essay_id"].map(essay_texts)
+    return df
 
 
 def modify_discourse_text(df: pd.DataFrame) -> pd.DataFrame:
@@ -18,6 +33,62 @@ def modify_discourse_text(df: pd.DataFrame) -> pd.DataFrame:
         df.discourse_id == "56744a66949a", "discourse_text"
     ] = "This whole thing is point less how they have us in here for two days im missing my education. We could have finished this in one day and had the rest of the week to get back on the track of learning. I've missed both days of weight lifting, algebra, and my world history that i do not want to fail again! If their are any people actually gonna sit down and take the time to read this then\n\nDO NOT DO THIS NEXT YEAR\n\n.\n\nThey are giving us cold lunches. ham and cheese and an apple, I am 16 years old and my body needs proper food. I wouldnt be complaining if they served actual breakfast. but because of Michelle Obama and her healthy diet rule they surve us 1 poptart in the moring. How does the school board expect us to last from 7:05-12:15 on a pop tart? then expect us to get A's, we are more focused on lunch than anything else. I am about done so if you have the time to read this even though this does not count. Bring PROPER_NAME a big Mac from mc donalds, SCHOOL_NAME, (idk area code but its in LOCATION_NAME)       \xa0    "
     return df
+
+
+def create_token_classification_df(
+    df: pd.DataFrame, is_test: bool = False
+) -> pd.DataFrame:
+    fold_column_exist = "fold" in df.columns
+    label_O = LABEL_O_WHEN_TEST if is_test else "O"
+
+    all_obs = []
+    for name, gr in tqdm(df.groupby("essay_id", sort=False)):
+        essay_text_start_end = gr["essay_text"].values[0]
+        token_labels = []
+        token_obs = []
+
+        end_pos = 0
+        for idx, row in gr.reset_index(drop=True).iterrows():
+            target_text = row["discourse_type"] + " " + row["discourse_text"].strip()
+            essay_text_start_end = essay_text_start_end[
+                :end_pos
+            ] + essay_text_start_end[end_pos:].replace(
+                row["discourse_text"].strip(), target_text, 1
+            )
+
+            start_pos = essay_text_start_end[end_pos:].find(target_text)
+            if start_pos == -1:
+                raise ValueError()
+            start_pos += end_pos
+
+            if idx == 0 and start_pos > 0:
+                token_labels.append(label_O)
+                token_obs.append(essay_text_start_end[:start_pos])
+
+            if start_pos > end_pos and end_pos > 0:
+                token_labels.append(label_O)
+                token_obs.append(essay_text_start_end[end_pos:start_pos])
+
+            end_pos = start_pos + len(target_text)
+            token_labels.append(0 if is_test else row["discourse_effectiveness"])
+            token_obs.append(essay_text_start_end[start_pos:end_pos])
+
+            if idx == len(gr) - 1 and end_pos < len(essay_text_start_end):
+                token_labels.append(label_O)
+                token_obs.append(essay_text_start_end[end_pos:])
+
+        all_obs.append(
+            (name, token_labels, token_obs, row["fold"])
+            if fold_column_exist
+            else (name, token_labels, token_obs)
+        )
+
+    return pd.DataFrame(
+        all_obs,
+        columns=["essay_id", "tokens", "essay_text", "fold"]
+        if fold_column_exist
+        else ["essay_id", "tokens", "essay_text"],
+    )
 
 
 def load_train_df(path: PATH) -> pd.DataFrame:
@@ -55,6 +126,7 @@ class CustomDataset(Dataset):
         config: Config,
         mode: str,
         label_encoder: Optional[LabelEncoder] = None,
+        map_hugging_face_model_name_to_kaggle_dataset: bool = False,
     ) -> None:
         self.df = df.copy()
         self.config = config
@@ -66,13 +138,26 @@ class CustomDataset(Dataset):
                 np.concatenate(self.df[config.dataset.label_columns].values)
             )
 
-        if not config.training.is_pseudo:
+        if self.mode != "test" and not config.training.is_pseudo:
             self.df[config.dataset.label_columns] = self.df[
                 config.dataset.label_columns
             ].map(lambda labels: self.label_encoder.transform(labels))
+            print(
+                f"Example encoded label: {self.df[config.dataset.label_columns].values[0]}"
+            )
 
+        backbone = (
+            HUGGING_FACE_MODEL_NAME_TO_KAGGLE_DATASET[config.architecture.backbone]
+            if map_hugging_face_model_name_to_kaggle_dataset
+            else config.architecture.backbone
+        )
         self.tokenizer = AutoTokenizer.from_pretrained(
-            config.architecture.backbone, add_prefix_space=True, use_fast=True
+            backbone,
+            add_prefix_space=True,
+            use_fast=True,
+            cache_dir=backbone
+            if map_hugging_face_model_name_to_kaggle_dataset
+            else None,
         )
         self.text = self.df[self.config.dataset.text_column].values
         self.labels = self.df[self.config.dataset.label_columns].values
@@ -114,7 +199,12 @@ class CustomDataset(Dataset):
                         word_start_mask.append(True)
                         continue
                 else:
-                    if self.labels[idx][lab_idx] != self.config.dataset.num_classes:
+                    _ignore = (
+                        LABEL_O_WHEN_TEST
+                        if self.mode == "test"
+                        else self.config.dataset.num_classes
+                    )
+                    if self.labels[idx][lab_idx] != _ignore:
                         word_start_mask.append(True)
                         continue
 
@@ -143,7 +233,8 @@ class CustomDataset(Dataset):
     def __getitem__(self, index: int):
         sample = dict()
         sample = self._read_data(index, sample)
-        sample = self._read_label(index, sample)
+        if self.mode != "test":
+            sample = self._read_label(index, sample)
         return sample
 
     def __len__(self):
@@ -168,3 +259,16 @@ class CustomDataset(Dataset):
             }
         else:
             raise ValueError(f"Can not move {type(batch)} to device.")
+
+
+def preprocess_test_df(df: pd.DataFrame, dir: PATH) -> pd.DataFrame:
+    df = add_essay_text_column(df, dir, is_test=True)
+    df = modify_discourse_text(df)
+
+    df["count"] = df["essay_text"].apply(len)
+    df["orig_order"] = range(len(df))
+    df = df.sort_values(
+        ["count", "essay_id", "orig_order"], ascending=True
+    ).reset_index(drop=True)
+
+    return df

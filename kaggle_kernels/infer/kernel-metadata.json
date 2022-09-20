@@ -1,0 +1,22 @@
+{
+    "id": "shutotakahashi/fpe-infer",
+    "title": "fpe-infer",
+    "code_file": "main.ipynb",
+    "language": "python",
+    "kernel_type": "notebook",
+    "is_private": "true",
+    "enable_gpu": "true",
+    "enable_internet": "false",
+    "dataset_sources": [
+        "shutotakahashi/fpe-2022-09-18-014244",
+        "ybabakhin/debertalarge",
+        "shutotakahashi/feedback-prize-effectiveness-st",
+        "shutotakahashi/fpe-code"
+    ],
+    "competition_sources": [
+        "feedback-prize-effectiveness"
+    ],
+    "kernel_sources": [
+        "shutotakahashi/pip-wheels-feedback-prize-effectivenes"
+    ]
+}

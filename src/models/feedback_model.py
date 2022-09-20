@@ -5,15 +5,17 @@ from transformers import AutoConfig, AutoModel
 from torch.utils.checkpoint import checkpoint
 
 from config import Config
+from utils.kaggle import HUGGING_FACE_MODEL_NAME_TO_KAGGLE_DATASET
 
 
-def batch_padding(batch):
+def batch_padding(batch, is_test: bool = False):
     idx = int(torch.where(batch["attention_mask"] == 1)[1].max())
 
     idx += 1
     batch["attention_mask"] = batch["attention_mask"][:, :idx]
     batch["input_ids"] = batch["input_ids"][:, :idx]
-    batch["target"] = batch["target"][:, :idx]
+    if not is_test:
+        batch["target"] = batch["target"][:, :idx]
     batch["word_start_mask"] = batch["word_start_mask"][:, :idx]
     batch["word_ids"] = batch["word_ids"][:, :idx]
 
@@ -21,17 +23,36 @@ def batch_padding(batch):
 
 
 class Net(nn.Module):
-    def __init__(self, config: Config) -> None:
+    def __init__(
+        self,
+        config: Config,
+        is_test: bool = False,
+        map_hugging_face_model_name_to_kaggle_dataset: bool = False,
+    ) -> None:
         super(Net, self).__init__()
 
         self.config = config
 
-        hf_config = AutoConfig.from_pretrained(self.config.architecture.backbone)
-        self.backbone = AutoModel.from_pretrained(
-            self.config.architecture.backbone, config=hf_config
+        backbone = (
+            HUGGING_FACE_MODEL_NAME_TO_KAGGLE_DATASET[config.architecture.backbone]
+            if map_hugging_face_model_name_to_kaggle_dataset
+            else config.architecture.backbone
+        )
+        hf_config = AutoConfig.from_pretrained(
+            backbone,
+            cache_dir=backbone
+            if map_hugging_face_model_name_to_kaggle_dataset
+            else None,
+        )
+        self.backbone = (
+            AutoModel.from_pretrained(
+                self.config.architecture.backbone, config=hf_config
+            )
+            if not is_test
+            else AutoModel.from_config(hf_config)
         )
 
-        if self.config.architecture.gradient_checkpointing:
+        if not is_test and self.config.architecture.gradient_checkpointing:
             self.backbone.gradient_checkpointing_enable()
 
         self.head = nn.Linear(
@@ -41,14 +62,16 @@ class Net(nn.Module):
         if self.config.architecture.add_wide_dropout:
             raise NotImplementedError
 
-    def forward(self, batch, calculate_loss=True):
+    def forward(self, batch, calculate_loss=True, is_test: bool = False):
         outputs = {}
 
         if calculate_loss:
             outputs["target"] = batch["target"]
             outputs["word_start_mask"] = batch["word_start_mask"]
 
-        batch = batch_padding(batch)
+        batch = batch_padding(batch, is_test)
+        if is_test:
+            outputs["word_start_mask"] = batch["word_start_mask"]
 
         x = self.backbone(
             input_ids=batch["input_ids"], attention_mask=batch["attention_mask"]
@@ -64,19 +87,22 @@ class Net(nn.Module):
         if self.config.architecture.add_wide_dropout:
             raise NotImplementedError
         else:
-            if self.config.architecture.dropout > 0.0:
+            if not is_test and self.config.architecture.dropout > 0.0:
                 x = F.dropout(
                     x, p=self.config.architecture.dropout, training=self.training
                 )
             logits = self.head(x)
 
         if not self.training:
-            outputs["logits"] = F.pad(
-                logits,
-                (0, 0, 0, self.config.tokenizer.max_length - logits.size()[1]),
-                "constant",
-                0,
-            )
+            if not is_test:
+                outputs["logits"] = F.pad(
+                    logits,
+                    (0, 0, 0, self.config.tokenizer.max_length - logits.size()[1]),
+                    "constant",
+                    0,
+                )
+            else:
+                outputs["logits"] = logits
 
         if calculate_loss:
             targets = batch["target"]

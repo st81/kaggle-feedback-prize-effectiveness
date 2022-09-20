@@ -1,3 +1,4 @@
+import collections
 import gc
 from pathlib import Path
 from typing import Callable, Optional
@@ -11,6 +12,7 @@ from torch.cuda.amp import GradScaler, autocast
 import wandb
 
 from config import Config
+from const import FILENAME
 from data import CustomDataset
 from models.feedback_model import Net
 from models.util import load_checkpoint
@@ -26,7 +28,7 @@ class TrainerNativePytorch:
     def __init__(
         self,
         config: Config,
-        train_dataset: CustomDataset,
+        train_dataset: Optional[CustomDataset] = None,
         eval_dataset: Optional[CustomDataset] = None,
         model_init: Optional[Callable[[Config], Net]] = None,
         save_dir: Optional[PATH] = None,
@@ -35,8 +37,11 @@ class TrainerNativePytorch:
         self.train_dataset = train_dataset
         self.eval_dataset = eval_dataset
         self.model_init = model_init
-        self.save_dir = Path(save_dir)
-        self.save_dir.mkdir(parents=True, exist_ok=True)
+        if save_dir is not None:
+            self.save_dir = Path(save_dir)
+            self.save_dir.mkdir(parents=True, exist_ok=True)
+        else:
+            self.save_dir = None
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def train(self):
@@ -206,7 +211,7 @@ class TrainerNativePytorch:
 
             if self.config.training.epochs > 0:
                 checkpoint = {"model": model.state_dict()}
-                torch.save(checkpoint, self.save_dir / "checkpoint.pth")
+                torch.save(checkpoint, self.save_dir / FILENAME.CHECKPOINT)
 
             progress_bar = tqdm(range(len(eval_loader)))
             val_it = iter(eval_loader)
@@ -267,3 +272,52 @@ class TrainerNativePytorch:
                 print(f"Validation metric: {metric}")
                 if "wandb" in self.config.environment.report_to:
                     wandb.log({"val_log_loss": metric})
+
+    def predict(self, test_dataset: CustomDataset, model_saved_dir: PATH) -> np.ndarray:
+        test_loader = DataLoader(
+            test_dataset,
+            shuffle=False,
+            batch_size=4,
+            num_workers=2,
+        )
+
+        model = self.model_init(self.config)
+        model.to(self.device).eval()
+
+        d = torch.load(Path(model_saved_dir) / FILENAME.CHECKPOINT, map_location="cpu")
+        model_weights = d["model"]
+        model_weights = {k.replace("module.", ""): v for k, v in model_weights.items()}
+        model.load_state_dict(collections.OrderedDict(model_weights), strict=True)
+        del d, model_weights
+        gc.collect()
+
+        preds = []
+        with torch.no_grad():
+            for data in tqdm(test_loader):
+                batch = CustomDataset.batch_to_device(data, self.device)
+
+                if self.config.environment.mixed_precision:
+                    with autocast():
+                        output_dict = model(batch, calculate_loss=False, is_test=True)
+                else:
+                    output_dict = model(batch, calculate_loss=False, is_test=True)
+
+                if self.config.dataset.dataset_class == "feedback_dataset":
+                    # output_dict:
+                    #   logits.shape: (batch_size * max_length in batch * num_classes)
+                    #   word_start_mask.shape: (batch_size * max_length in batch)
+                    #   target.shape: (batch_size * max_length in batch)
+                    probs = (
+                        torch.softmax(
+                            output_dict["logits"][output_dict["word_start_mask"]], dim=1
+                        )
+                        .detach()
+                        .cpu()
+                        .numpy()
+                    )  # shape: (num_word_start_mask_true, num_classes)
+                    preds.append(probs)
+
+                else:
+                    raise NotImplementedError
+
+        return preds
