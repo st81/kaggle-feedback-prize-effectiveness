@@ -2,6 +2,7 @@ from pathlib import Path
 import subprocess
 
 from dotenv import load_dotenv
+import numpy as np
 
 from args import prepare_args, prepare_parser
 from config import Config, load_config
@@ -18,7 +19,12 @@ from custom_logger import init_wandb
 
 def train(config: Config, save_dir: str) -> None:
     load_dotenv()
-    set_seed(config.environment.seed)
+    if config.environment.seed < 0:
+        seed = np.random.randint(1_000_000)
+    else:
+        seed = config.environment.seed
+    print(f"seed: {seed}")
+    set_seed(seed)
 
     train_df, val_df = split_train_val(
         load_train_df(config.dataset.train_df_path), config.dataset.fold
