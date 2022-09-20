@@ -20,11 +20,11 @@ from custom_logger import init_wandb
 def train(config: Config, save_dir: str) -> None:
     load_dotenv()
     if config.environment.seed < 0:
-        seed = np.random.randint(1_000_000)
+        config.environment.seed = np.random.randint(1_000_000)
     else:
-        seed = config.environment.seed
-    print(f"seed: {seed}")
-    set_seed(seed)
+        config.environment.seed = config.environment.seed
+    print(f"seed: {config.environment.seed}")
+    set_seed(config.environment.seed)
 
     train_df, val_df = split_train_val(
         load_train_df(config.dataset.train_df_path), config.dataset.fold
