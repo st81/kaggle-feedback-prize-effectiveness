@@ -53,7 +53,7 @@ def create_notebook_file(dataset_id: str, save_path: PATH) -> None:
         "cells": [
             {
                 "cell_type": "code",
-                "source": f"!cp -r ../input/{dataset_id} .",
+                "source": f"!cp -r ../input/{dataset_id}/* .",
                 "metadata": {
                     "_uuid": "8f2839f25d086af736a60e9eeb907d3b93b6e0e5",
                     "_cell_guid": "b1076dfc-b9ad-4769-8c92-a6c4dae69d19",
