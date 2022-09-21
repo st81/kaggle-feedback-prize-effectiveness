@@ -26,6 +26,7 @@ def load_checkpoint(config: Config, model: nn.Module) -> None:
         model.load_state_dict(model_weights, strict=True)
     except Exception as e:
         print("removing unused pretrained layers")
+        print(e)
         for layer_name in re.findall("size mismatch for (.*?):", str(e)):
             model_weights.pop(layer_name, None)
         model.load_state_dict(model_weights, strict=False)
