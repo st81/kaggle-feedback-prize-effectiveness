@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 import yaml
 
 import config
+from const import FILENAME
 from utils.types import PATH
 
 
@@ -97,6 +98,7 @@ def load_config(path: PATH) -> Config:
 @dataclass
 class EnsembleConfig:
     model_saved_dir: str
+    checkpoint_filename: str = FILENAME.CHECKPOINT
 
 
 def load_ensemble_configs(path: PATH) -> List[EnsembleConfig]:

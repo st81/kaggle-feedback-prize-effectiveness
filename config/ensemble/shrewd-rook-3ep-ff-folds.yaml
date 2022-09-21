@@ -1,3 +1,4 @@
 configs:
-- model_saved_dir: output/fpe-2022-09-18-014244
+# - model_saved_dir: output/ybabakhin-shrewd-rook-3ep-ff
+#   checkpoint_filename: checkpoint-fold0.pth
 - model_saved_dir: output/fpe-2022-09-18-030208

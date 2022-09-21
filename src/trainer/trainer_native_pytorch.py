@@ -274,7 +274,9 @@ class TrainerNativePytorch:
                 if "wandb" in self.config.environment.report_to:
                     wandb.log({"val_log_loss": metric})
 
-    def predict(self, test_dataset: CustomDataset, model_saved_dir: PATH) -> np.ndarray:
+    def predict(
+        self, test_dataset: CustomDataset, model_saved_path: PATH
+    ) -> np.ndarray:
         test_loader = DataLoader(
             test_dataset,
             shuffle=False,
@@ -285,7 +287,7 @@ class TrainerNativePytorch:
         model = self.model_init(self.config)
         model.to(self.device).eval()
 
-        d = torch.load(Path(model_saved_dir) / FILENAME.CHECKPOINT, map_location="cpu")
+        d = torch.load(model_saved_path, map_location="cpu")
         model_weights = d["model"]
         model_weights = {k.replace("module.", ""): v for k, v in model_weights.items()}
         model.load_state_dict(collections.OrderedDict(model_weights), strict=True)

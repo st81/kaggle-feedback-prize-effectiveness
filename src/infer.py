@@ -16,6 +16,7 @@ from utils.types import PATH
 
 def infer(
     model_saved_dir: PATH,
+    checkpoint_filename: str,
     df: pd.DataFrame,
     map_hugging_face_model_name_to_kaggle_dataset: bool,
 ) -> np.ndarray:
@@ -37,7 +38,7 @@ def infer(
             map_hugging_face_model_name_to_kaggle_dataset=map_hugging_face_model_name_to_kaggle_dataset,
         ),
     )
-    preds = trainer.predict(test_dataset, model_saved_dir)
+    preds = trainer.predict(test_dataset, Path(model_saved_dir) / checkpoint_filename)
     return np.concatenate(preds, axis=0)
 
 
@@ -60,6 +61,7 @@ if __name__ == "__main__":
         preds.append(
             infer(
                 _c.model_saved_dir,
+                _c.checkpoint_filename,
                 df,
                 args.map_hugging_face_model_name_to_kaggle_dataset,
             )

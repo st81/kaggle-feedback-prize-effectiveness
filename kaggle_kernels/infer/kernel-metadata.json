@@ -9,6 +9,7 @@
     "enable_internet": "false",
     "dataset_sources": [
         "shutotakahashi/fpe-2022-09-18-014244",
+        "shutotakahashi/fpe-2022-09-18-030208",
         "ybabakhin/debertalarge",
         "shutotakahashi/feedback-prize-effectiveness-st",
         "shutotakahashi/fpe-code"
@@ -17,6 +18,11 @@
         "feedback-prize-effectiveness"
     ],
     "kernel_sources": [
+        "shutotakahashi/fpe-2022-09-18-014244-cp",
+        "shutotakahashi/fpe-2022-09-18-030208-cp",
+        "shutotakahashi/fpe-2022-09-20-110546-cp",
+        "shutotakahashi/fpe-2022-09-20-115952-cp",
+        "shutotakahashi/ybabakhin-shrewd-rook-3ep-ff",
         "shutotakahashi/pip-wheels-feedback-prize-effectivenes"
     ]
 }
