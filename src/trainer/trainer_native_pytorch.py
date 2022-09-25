@@ -327,6 +327,7 @@ class TrainerNativePytorch:
         preds = []
         with torch.no_grad():
             for data in tqdm(test_loader):
+                print(" ")
                 if self.config.dataset.dataset_class == "feedback_dataset":
                     batch = CustomDataset.batch_to_device(data, self.device)
                 elif self.config.dataset.dataset_class == "feedback_dataset_essay_ds":
