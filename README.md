@@ -13,6 +13,25 @@ Not explicitly specified, commands must be run on gcp instance.
 gcloud compute ssh --zone "us-central1-c" "instance-1"  --project "sigma-night-266302"
 ```
 
+If error like below is happened,
+
+```sh
+ssh: connect to host 34.134.218.158 port 22: Connection refused
+ERROR: (gcloud.compute.ssh) [/usr/bin/ssh] exited with return code [255].
+```
+
+run `gcloud compute config-ssh`.
+
+```sh
+$  gcloud compute config-ssh
+You should now be able to use ssh/scp with your instances.
+For example, try running:
+
+  $ ssh instance-1.us-central1-c.sigma-night-266302
+```
+
+Ref: [ERROR: (gcloud.compute.ssh) \[/usr/bin/ssh\] exited with return code \[255\] - Stack Overflow](https://stackoverflow.com/a/49647883)
+
 ## Send required files
 
 **Run below command in local**
