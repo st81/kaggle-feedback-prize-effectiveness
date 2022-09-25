@@ -1,9 +1,10 @@
 import collections
 import gc
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
 import numpy as np
+import pandas as pd
 from sklearn.metrics import log_loss
 from tqdm import tqdm
 import torch
@@ -14,6 +15,7 @@ import wandb
 from config import Config
 from const import FILENAME
 from data import CustomDataset
+from data_es import EssayDataset
 from models.feedback_model import Net
 from models.util import load_checkpoint
 from scheduler import get_scheduler
@@ -29,11 +31,17 @@ class TrainerNativePytorch:
     def __init__(
         self,
         config: Config,
-        train_dataset: Optional[CustomDataset] = None,
-        eval_dataset: Optional[CustomDataset] = None,
+        train_dataset: Optional[Union[CustomDataset, EssayDataset]] = None,
+        eval_dataset: Optional[Union[CustomDataset, EssayDataset]] = None,
         model_init: Optional[Callable[[Config], Net]] = None,
         save_dir: Optional[PATH] = None,
+        val_df: Optional[pd.DataFrame] = None,
     ) -> None:
+        if isinstance(eval_dataset, EssayDataset) and val_df is None:
+            raise ValueError(
+                "'val_df' must be provided if 'type(eval_dataset)' is 'EssayDataset'"
+            )
+
         self.config = config
         self.train_dataset = train_dataset
         self.eval_dataset = eval_dataset
@@ -43,6 +51,7 @@ class TrainerNativePytorch:
             self.save_dir.mkdir(parents=True, exist_ok=True)
         else:
             self.save_dir = None
+        self.val_df = val_df
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def train(self):
@@ -156,7 +165,10 @@ class TrainerNativePytorch:
             for itr in progress_bar:
                 i += 1
                 curr_step += self.config.training.batch_size
-                batch = CustomDataset.batch_to_device(next(tr_it), self.device)
+                if self.config.dataset.dataset_class == "feedback_dataset":
+                    batch = CustomDataset.batch_to_device(next(tr_it), self.device)
+                elif self.config.dataset.dataset_class == "feedback_dataset_essay_ds":
+                    batch = EssayDataset.batch_to_device(next(tr_it), self.device)
 
                 if self.config.environment.mixed_precision:
                     with autocast():
@@ -225,7 +237,12 @@ class TrainerNativePytorch:
             with torch.no_grad():
                 for itr in progress_bar:
                     data = next(val_it)
-                    batch = CustomDataset.batch_to_device(data, self.device)
+                    if self.config.dataset.dataset_class == "feedback_dataset":
+                        batch = CustomDataset.batch_to_device(data, self.device)
+                    elif (
+                        self.config.dataset.dataset_class == "feedback_dataset_essay_ds"
+                    ):
+                        batch = EssayDataset.batch_to_device(data, self.device)
 
                     if self.config.environment.mixed_precision:
                         with autocast():
@@ -259,7 +276,14 @@ class TrainerNativePytorch:
                                 else:
                                     all_targets.append(t)
                     else:
-                        raise NotImplementedError
+                        preds.append(
+                            output_dict["logits"]
+                            .float()
+                            .softmax(dim=1)
+                            .detach()
+                            .cpu()
+                            .numpy()
+                        )
 
                 if self.config.dataset.dataset_class == "feedback_dataset":
                     metric = log_loss(
@@ -269,13 +293,19 @@ class TrainerNativePytorch:
                         labels=list(range(self.config.dataset.num_classes)),
                     )
                 else:
-                    raise NotImplementedError
+                    preds = np.concatenate(preds, axis=0)
+                    metric = log_loss(
+                        self.val_df[self.config.dataset.label_columns].values.argmax(
+                            axis=1
+                        ),
+                        preds,
+                    )
                 print(f"Validation metric: {metric}")
                 if "wandb" in self.config.environment.report_to:
                     wandb.log({"val_log_loss": metric})
 
     def predict(
-        self, test_dataset: CustomDataset, model_saved_path: PATH
+        self, test_dataset: Union[CustomDataset, EssayDataset], model_saved_path: PATH
     ) -> np.ndarray:
         test_loader = DataLoader(
             test_dataset,
@@ -297,7 +327,10 @@ class TrainerNativePytorch:
         preds = []
         with torch.no_grad():
             for data in tqdm(test_loader):
-                batch = CustomDataset.batch_to_device(data, self.device)
+                if self.config.dataset.dataset_class == "feedback_dataset":
+                    batch = CustomDataset.batch_to_device(data, self.device)
+                elif self.config.dataset.dataset_class == "feedback_dataset_essay_ds":
+                    batch = EssayDataset.batch_to_device(data, self.device)
 
                 if self.config.environment.mixed_precision:
                     with autocast():

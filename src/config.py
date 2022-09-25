@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from genericpath import isdir
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 import yaml
 
 import config
@@ -24,16 +24,28 @@ class Architecture:
     gradient_checkpointing: bool
     add_wide_dropout: Optional[bool] = None
     pretrained_weights: Optional[str] = ""
+    aux_type: bool = False
+    custom_intermediate_dropout: bool = False
+    intermediate_dropout: float = 0.0
+    model_class: str = "feedback_model"
+    no_type: Optional[bool] = None
+    pool: str = ""
+    use_sep: Optional[bool] = None
+    use_type: bool = False
+    wide_dropout: float = 0.0
 
 
 @dataclass
 class Dataset:
     dataset_class: str
     fold: int
-    label_columns: str
+    label_columns: Union[str, List[str]]
     num_classes: int
-    text_column: str
+    text_column: Union[str, List[str]]
     train_df_path: str
+    add_group_types: bool = True
+    group_discourse: bool = True
+    separator: str = ""
 
 
 @dataclass
@@ -48,6 +60,7 @@ class Environment:
 @dataclass
 class Tokenizer:
     max_length: int
+    add_newline_token: bool = True
 
 
 @dataclass
@@ -67,6 +80,8 @@ class Training:
     warmup_epochs: float
     weight_decay: float
     add_types: Optional[bool] = None
+    aux_loss_function: str = "CrossEntropy"
+    mask_probability: float = 0.0
 
 
 @dataclass

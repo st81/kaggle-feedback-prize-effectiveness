@@ -46,6 +46,15 @@ class FeedbackPrizeEffectivenessData:
                 lines = f.read()
             essay_texts[filename.stem] = lines
         self.train_df["essay_text"] = self.train_df["essay_id"].map(essay_texts)
+
+        discourse_effectiveness_ohe = pd.get_dummies(
+            self.train_df["discourse_effectiveness"]
+        )
+        discourse_effectiveness_ohe.columns = [
+            f"discourse_effectiveness_{c}" for c in discourse_effectiveness_ohe.columns
+        ]
+        self.train_df = pd.concat([self.train_df, discourse_effectiveness_ohe], axis=1)
+
         self.train_df.to_csv(Path(self.save_dir) / FILENAME.TRAIN_FOLDED, index=False)
 
     def prepare_token_classification(self) -> None:
@@ -177,7 +186,7 @@ if __name__ == "__main__":
     feedback_prize_effectiveness_data = FeedbackPrizeEffectivenessData(
         config.base.feedback_prize_effectiveness_dir, config.base.input_data_dir
     )
-    # feedback_prize_effectiveness_data.prepare_folded()
+    feedback_prize_effectiveness_data.prepare_folded()
     feedback_prize_effectiveness_data.prepare_token_classification()
 
     # feedback_prize_2021_data = FeedbackPrize2021Data(

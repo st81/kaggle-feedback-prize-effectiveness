@@ -113,10 +113,31 @@ def split_train_val(
     return train_df, val_df
 
 
-def change_df_for_debug(train_df: pd.DataFrame) -> pd.DataFrame:
-    df = pd.DataFrame([train_df.iloc[0, :].values for _ in range(len(train_df))])
-    df.columns = train_df.columns
-    return df
+def change_df_for_debug(
+    train_df: pd.DataFrame, val_df: pd.DataFrame, config: Config
+) -> pd.DataFrame:
+    def _change_df_for_debug(
+        df: pd.DataFrame, config: Config, is_val: bool = False
+    ) -> pd.DataFrame:
+        if config.dataset.dataset_class == "feedback_dataset":
+            df = pd.DataFrame(
+                [train_df.iloc[0, :].values for _ in range(len(train_df))]
+            )
+            df.columns = train_df.columns
+        elif config.dataset.dataset_class == "feedback_dataset_essay_ds":
+            essay_ids = df["essay_id"].unique()
+            idx = 2 if is_val else 1  # Because sklearn.metrics.log_loss raise error
+            df = df[df["essay_id"].isin(essay_ids[:idx])]
+        return df
+
+    train_df, val_df = _change_df_for_debug(train_df, config), _change_df_for_debug(
+        val_df, config, is_val=True
+    )
+
+    if config.dataset.dataset_class == "feedback_dataset":
+        train_df, val_df = train_df.loc[:50, :], val_df.loc[:1, :]
+
+    return train_df, val_df
 
 
 class CustomDataset(Dataset):
