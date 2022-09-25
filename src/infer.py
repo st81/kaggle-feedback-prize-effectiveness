@@ -8,6 +8,7 @@ from args import prepare_args, prepare_parser
 from config import load_config, load_ensemble_configs
 from const import FILENAME
 from data import preprocess_test_df, create_token_classification_df, CustomDataset
+from data_es import EssayDataset
 from models.base import get_model
 from trainer.trainer_native_pytorch import TrainerNativePytorch
 from utils.env import set_environ
@@ -23,18 +24,27 @@ def infer(
 ) -> np.ndarray:
     config = load_config(model_saved_dir)
 
-    df = create_token_classification_df(df, is_test=True)
-    test_dataset = CustomDataset(
-        df,
-        config,
-        "test",
-        map_hugging_face_model_name_to_kaggle_dataset=map_hugging_face_model_name_to_kaggle_dataset,
-    )
+    if config.dataset.dataset_class == "feedback_dataset":
+        df = create_token_classification_df(df, is_test=True)
+        test_dataset = CustomDataset(
+            df,
+            config,
+            "test",
+            map_hugging_face_model_name_to_kaggle_dataset=map_hugging_face_model_name_to_kaggle_dataset,
+        )
+    elif config.dataset.dataset_class == "feedback_dataset_essay_ds":
+        test_dataset = EssayDataset(
+            df,
+            config,
+            "test",
+            map_hugging_face_model_name_to_kaggle_dataset=map_hugging_face_model_name_to_kaggle_dataset,
+        )
 
     trainer = TrainerNativePytorch(
         config,
         model_init=partial(
             get_model,
+            model_class=config.architecture.model_class,
             is_test=True,
             map_hugging_face_model_name_to_kaggle_dataset=map_hugging_face_model_name_to_kaggle_dataset,
         ),
@@ -47,6 +57,9 @@ if __name__ == "__main__":
     set_environ()
     args = prepare_args(prepare_parser())
     ensemble_configs = load_ensemble_configs(args.ensemble_config_path)
+    # ensemble_configs = load_ensemble_configs(
+    #     "config/ensemble/axiomatic-vulture-ff.yaml"
+    # )
     config = load_config(
         ensemble_configs[0].model_saved_dir
     )  # This config only used to access base config

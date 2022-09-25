@@ -8,8 +8,7 @@
     "enable_gpu": "true",
     "enable_internet": "false",
     "dataset_sources": [
-        "shutotakahashi/fpe-2022-09-18-014244",
-        "shutotakahashi/fpe-2022-09-18-030208",
+        "ybabakhin/deberta-v3-large",
         "ybabakhin/debertalarge",
         "shutotakahashi/feedback-prize-effectiveness-st",
         "shutotakahashi/fpe-code"
@@ -18,6 +17,9 @@
         "feedback-prize-effectiveness"
     ],
     "kernel_sources": [
+        "shutotakahashi/ybabakhin-axiomatic-vulture-ff-v2",
+        "shutotakahashi/fpe-2022-09-25-052617-cp",
+        "shutotakahashi/fpe-2022-09-25-044204-cp",
         "shutotakahashi/fpe-2022-09-18-014244-cp",
         "shutotakahashi/fpe-2022-09-18-030208-cp",
         "shutotakahashi/fpe-2022-09-20-110546-cp",

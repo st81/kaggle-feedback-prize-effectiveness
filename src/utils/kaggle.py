@@ -10,7 +10,8 @@ from utils.types import PATH
 
 
 HUGGING_FACE_MODEL_NAME_TO_KAGGLE_DATASET = {
-    "microsoft/deberta-large": "../input/debertalarge"
+    "microsoft/deberta-large": "../input/debertalarge",
+    "microsoft/deberta-v3-large": "../input/deberta-v3-large",
 }
 
 

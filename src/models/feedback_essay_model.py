@@ -107,19 +107,15 @@ class Net(nn.Module):
         super(Net, self).__init__()
 
         self.config = config
+        self.is_test = is_test
 
         backbone = (
             HUGGING_FACE_MODEL_NAME_TO_KAGGLE_DATASET[config.architecture.backbone]
             if map_hugging_face_model_name_to_kaggle_dataset
             else config.architecture.backbone
         )
-        hf_config = AutoConfig.from_pretrained(
-            backbone,
-            cache_dir=backbone
-            if map_hugging_face_model_name_to_kaggle_dataset
-            else None,
-        )
-        if self.config.architecture.custom_intermediate_dropout > 0:
+        hf_config = AutoConfig.from_pretrained(backbone)
+        if not is_test and self.config.architecture.custom_intermediate_dropout > 0:
             pass
         self.backbone = (
             AutoModel.from_pretrained(
@@ -129,9 +125,17 @@ class Net(nn.Module):
             else AutoModel.from_config(hf_config)
         )
 
+        if is_test:
+            # I can not understand why this is needed,
+            # but it is written in https://www.kaggle.com/code/ybabakhin/team-hydrogen-1st-place?scriptVersionId=104986984&cellId=7
+            self.backbone.pooler = None
+
         if self.config.dataset.group_discourse:
             self.backbone.resize_token_embeddings(self.config._tokenizer_size)
-        print("Embedding size", self.backbone.embeddings.word_embeddings.weight.shape)
+        if not is_test:
+            print(
+                "Embedding size", self.backbone.embeddings.word_embeddings.weight.shape
+            )
 
         self.pooling = NLPPoolings.get(self.config.architecture.pool)
         self.pooling = self.pooling(dim=1, config=config)
@@ -140,7 +144,7 @@ class Net(nn.Module):
 
         self.dim = dim
 
-        if self.config.dataset.label_columns == ["discourse_type"]:
+        if not is_test and self.config.dataset.label_columns == ["discourse_type"]:
             raise NotImplementedError
         else:
             self.head = nn.Linear(dim, 3)
@@ -148,12 +152,13 @@ class Net(nn.Module):
         if self.config.architecture.aux_type:
             raise NotImplementedError
 
-        if self.config.training.loss_function == "CrossEntropy":
-            self.loss_fn = DenseCrossEntropy()
-        elif self.config.training.loss_function == "WeightedCrossEntropy":
-            raise NotImplementedError
-        elif self.config.training.loss_function == "FocalLoss":
-            raise NotImplementedError
+        if not is_test:
+            if self.config.training.loss_function == "CrossEntropy":
+                self.loss_fn = DenseCrossEntropy()
+            elif self.config.training.loss_function == "WeightedCrossEntropy":
+                raise NotImplementedError
+            elif self.config.training.loss_function == "FocalLoss":
+                raise NotImplementedError
 
     def get_features(self, batch):
         attention_mask = batch["attention_mask"]
@@ -165,18 +170,22 @@ class Net(nn.Module):
         x = self.pooling(x, attention_mask, input_ids, self.config)
 
         if self.config.dataset.group_discourse:
-            # len(batch["target"]) = batch_size.
-            batch["target"] = [batch["target"][j][: len(x[j])] for j in range(len(x))]
-            batch["target"] = torch.cat(batch["target"])
+            if not self.is_test:
+                # len(batch["target"]) = batch_size.
+                batch["target"] = [
+                    batch["target"][j][: len(x[j])] for j in range(len(x))
+                ]
+                batch["target"] = torch.cat(batch["target"])
 
-            if self.training and self.config.architecture.aux_type:
-                raise NotImplementedError
+                if self.training and self.config.architecture.aux_type:
+                    raise NotImplementedError
 
             x = torch.cat(x)
 
         return x, batch
 
-    def forward(self, batch, calculate_loss=True):
+    def forward(self, batch, calculate_loss=True, is_test: bool = False):
+        # Argument 'is_test' is exist for compatibility with 'models.feedback_model.Net'
         idx = int(torch.where(batch["attention_mask"] == 1)[1].max())
         idx += 1
         batch["attention_mask"] = batch["attention_mask"][:, :idx]

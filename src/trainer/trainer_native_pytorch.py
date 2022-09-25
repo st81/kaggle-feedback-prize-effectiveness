@@ -310,7 +310,7 @@ class TrainerNativePytorch:
         test_loader = DataLoader(
             test_dataset,
             shuffle=False,
-            batch_size=4,
+            batch_size=4 if isinstance(test_dataset, CustomDataset) else 8,
             num_workers=2,
         )
 
@@ -354,6 +354,15 @@ class TrainerNativePytorch:
                     preds.append(probs)
 
                 else:
-                    raise NotImplementedError
+                    # output_dict:
+                    #   logits.shape: (num discourse , num_classes)
+                    preds.append(
+                        output_dict["logits"]
+                        .float()
+                        .softmax(dim=1)
+                        .detach()
+                        .cpu()
+                        .numpy()
+                    )
 
         return preds

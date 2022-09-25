@@ -34,7 +34,7 @@ environment:
   num_workers: 4
   report_to: []
   seed: 1
-  debug: false
+  debug: true
 tokenizer:
   add_newline_token: true
   max_length: 2048

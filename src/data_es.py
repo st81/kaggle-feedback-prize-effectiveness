@@ -28,12 +28,7 @@ class EssayDataset(Dataset):
             if map_hugging_face_model_name_to_kaggle_dataset
             else config.architecture.backbone
         )
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            backbone,
-            cache_dir=backbone
-            if map_hugging_face_model_name_to_kaggle_dataset
-            else None,
-        )
+        self.tokenizer = AutoTokenizer.from_pretrained(backbone)
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
@@ -47,20 +42,22 @@ class EssayDataset(Dataset):
 
         self.text = self.get_texts(self.df, self.config, self.tokenizer.sep_token)
 
-        self.label_cols = self.config.dataset.label_columns
+        if self.mode != "test":
+            self.label_cols = self.config.dataset.label_columns
 
-        if self.label_cols == ["discourse_type"]:
-            raise NotImplementedError
-        else:
-            self.labels = self.df[self.label_cols].values
+            if self.label_cols == ["discourse_type"]:
+                raise NotImplementedError
+            else:
+                self.labels = self.df[self.label_cols].values
 
-        self.weights = self.labels.max(axis=1)
+            self.weights = self.labels.max(axis=1)
 
         if self.config.dataset.group_discourse:
-            self.df["weights"] = self.weights
-            self.df.loc[
-                self.df.discourse_id == "56744a66949a", "discourse_text"
-            ] = "This whole thing is point less how they have us in here for two days im missing my education. We could have finished this in one day and had the rest of the week to get back on the track of learning. I've missed both days of weight lifting, algebra, and my world history that i do not want to fail again! If their are any people actually gonna sit down and take the time to read this then\n\nDO NOT DO THIS NEXT YEAR\n\n.\n\nThey are giving us cold lunches. ham and cheese and an apple, I am 16 years old and my body needs proper food. I wouldnt be complaining if they served actual breakfast. but because of Michelle Obama and her healthy diet rule they surve us 1 poptart in the moring. How does the school board expect us to last from 7:05-12:15 on a pop tart? then expect us to get A's, we are more focused on lunch than anything else. I am about done so if you have the time to read this even though this does not count. Bring PROPER_NAME a big Mac from mc donalds, SCHOOL_NAME, (idk area code but its in LOCATION_NAME)       \xa0    "
+            if self.mode != "test":
+                self.df["weights"] = self.weights
+                self.df.loc[
+                    self.df.discourse_id == "56744a66949a", "discourse_text"
+                ] = "This whole thing is point less how they have us in here for two days im missing my education. We could have finished this in one day and had the rest of the week to get back on the track of learning. I've missed both days of weight lifting, algebra, and my world history that i do not want to fail again! If their are any people actually gonna sit down and take the time to read this then\n\nDO NOT DO THIS NEXT YEAR\n\n.\n\nThey are giving us cold lunches. ham and cheese and an apple, I am 16 years old and my body needs proper food. I wouldnt be complaining if they served actual breakfast. but because of Michelle Obama and her healthy diet rule they surve us 1 poptart in the moring. How does the school board expect us to last from 7:05-12:15 on a pop tart? then expect us to get A's, we are more focused on lunch than anything else. I am about done so if you have the time to read this even though this does not count. Bring PROPER_NAME a big Mac from mc donalds, SCHOOL_NAME, (idk area code but its in LOCATION_NAME)       \xa0    "
 
             grps = self.df.groupby("essay_id", sort=False)
             self.grp_texts = []
@@ -82,8 +79,9 @@ class EssayDataset(Dataset):
 
                 end = 0
                 for j in range(len(g)):
-                    labels.append(g[self.label_cols].values[j])
-                    weights.append(g["weights"].values[j])
+                    if self.mode != "test":
+                        labels.append(g[self.label_cols].values[j])
+                        weights.append(g["weights"].values[j])
 
                     if self.mode == "train" and self.config.architecture.aux_type:
                         raise NotImplementedError
@@ -123,13 +121,14 @@ class EssayDataset(Dataset):
                     )
 
                 self.grp_texts.append(t)
-                self.grp_labels.append(labels)
-                self.grp_weights.append(weights)
+                if self.mode != "test":
+                    self.grp_labels.append(labels)
+                    self.grp_weights.append(weights)
                 if self.mode == "train" and self.config.architecture.aux_type:
                     raise NotImplementedError
                 s += len(g)
 
-                if jjj == 0:
+                if self.mode != "test" and jjj == 0:
                     print(t)
                     print(labels)
 
@@ -265,10 +264,11 @@ class EssayDataset(Dataset):
 
         sample = self._read_data(idx, sample)
 
-        if self.label_cols is not None:
-            sample = self._read_label(idx, sample)
+        if self.mode != "test":
+            if self.label_cols is not None:
+                sample = self._read_label(idx, sample)
 
-        if "target" in sample:
-            sample["target"] = torch.tensor(np.array(sample["target"])).float()
+            if "target" in sample:
+                sample["target"] = torch.tensor(np.array(sample["target"])).float()
 
         return sample
