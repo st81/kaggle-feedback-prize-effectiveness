@@ -11,7 +11,7 @@ from torch.utils.data import Dataset
 from transformers import AutoTokenizer
 
 from config import Config
-from const import LABEL_O_WHEN_TEST
+from const import LABEL_O_WHEN_TEST, LABEL_O_WHEN_PSEUDO
 from utils.kaggle import HUGGING_FACE_MODEL_NAME_TO_KAGGLE_DATASET
 from utils.types import PATH
 
@@ -36,10 +36,13 @@ def modify_discourse_text(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def create_token_classification_df(
-    df: pd.DataFrame, is_test: bool = False
+    df: pd.DataFrame, is_test: bool = False, is_pseudo: bool = False
 ) -> pd.DataFrame:
     fold_column_exist = "fold" in df.columns
-    label_O = LABEL_O_WHEN_TEST if is_test else "O"
+    if not is_pseudo:
+        label_O = LABEL_O_WHEN_TEST if is_test else "O"
+    else:
+        label_O = LABEL_O_WHEN_PSEUDO
 
     all_obs = []
     for name, gr in tqdm(df.groupby("essay_id", sort=False)):
@@ -48,6 +51,11 @@ def create_token_classification_df(
         token_obs = []
 
         end_pos = 0
+
+        # Pseudo with types in the beginning (pseudo 104 and 140)
+        # token_obs.append(" ".join(gr.discourse_type.to_list()))
+        # token_labels.append([-1, -1, -1])
+
         for idx, row in gr.reset_index(drop=True).iterrows():
             target_text = row["discourse_type"] + " " + row["discourse_text"].strip()
             essay_text_start_end = essay_text_start_end[
@@ -70,7 +78,12 @@ def create_token_classification_df(
                 token_obs.append(essay_text_start_end[end_pos:start_pos])
 
             end_pos = start_pos + len(target_text)
-            token_labels.append(0 if is_test else row["discourse_effectiveness"])
+            if not is_pseudo:
+                token_labels.append(0 if is_test else row["discourse_effectiveness"])
+            else:
+                token_labels.append(
+                    [row["Adequate"], row["Effective"], row["Ineffective"]]
+                )
             token_obs.append(essay_text_start_end[start_pos:end_pos])
 
             if idx == len(gr) - 1 and end_pos < len(essay_text_start_end):
