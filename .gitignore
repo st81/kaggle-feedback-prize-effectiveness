@@ -1,7 +1,7 @@
 # data
 input/
 output/
-submission.csv
+*.csv
 wandb/
 
 # python

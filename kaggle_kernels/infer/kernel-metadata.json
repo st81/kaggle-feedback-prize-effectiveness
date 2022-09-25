@@ -17,6 +17,7 @@
         "feedback-prize-effectiveness"
     ],
     "kernel_sources": [
+        "shutotakahashi/fpe-2022-09-25-075239-cp",
         "shutotakahashi/ybabakhin-axiomatic-vulture-ff-v2",
         "shutotakahashi/fpe-2022-09-25-052617-cp",
         "shutotakahashi/fpe-2022-09-25-044204-cp",

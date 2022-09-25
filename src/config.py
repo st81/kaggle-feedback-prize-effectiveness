@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from genericpath import isdir
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 import yaml
 
 import config
@@ -116,5 +116,6 @@ class EnsembleConfig:
     checkpoint_filename: str = FILENAME.CHECKPOINT
 
 
-def load_ensemble_configs(path: PATH) -> List[EnsembleConfig]:
-    return [EnsembleConfig(**c) for c in load_yaml(path)["configs"]]
+def load_ensemble_configs(path: PATH) -> Tuple[List[EnsembleConfig], Union[str, None]]:
+    _c = load_yaml(path)
+    return [EnsembleConfig(**c) for c in _c["configs"]], _c.get("pseudo_label_filename")
