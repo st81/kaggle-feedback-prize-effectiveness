@@ -120,10 +120,17 @@ def change_df_for_debug(
         df: pd.DataFrame, config: Config, is_val: bool = False
     ) -> pd.DataFrame:
         if config.dataset.dataset_class == "feedback_dataset":
+            train_df["num_unique_tokens"] = train_df["tokens"].apply(
+                lambda x: len(np.unique(x))
+            )
             df = pd.DataFrame(
-                [train_df.iloc[0, :].values for _ in range(len(train_df))]
+                [
+                    train_df[train_df["num_unique_tokens"] == 4].iloc[0, :].values
+                    for _ in range(len(train_df))
+                ]
             )
             df.columns = train_df.columns
+            df = df.drop(columns="num_unique_tokens")
         elif config.dataset.dataset_class == "feedback_dataset_essay_ds":
             essay_ids = df["essay_id"].unique()
             idx = 2 if is_val else 1  # Because sklearn.metrics.log_loss raise error
