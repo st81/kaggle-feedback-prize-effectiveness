@@ -10,6 +10,7 @@ from const import FILENAME
 from data import preprocess_test_df, create_token_classification_df, CustomDataset
 from models.base import get_model
 from trainer.trainer_native_pytorch import TrainerNativePytorch
+from utils.env import set_environ
 from utils.kaggle import create_submission
 from utils.types import PATH
 
@@ -43,6 +44,7 @@ def infer(
 
 
 if __name__ == "__main__":
+    set_environ()
     args = prepare_args(prepare_parser())
     ensemble_configs = load_ensemble_configs(args.ensemble_config_path)
     config = load_config(

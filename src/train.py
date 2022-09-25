@@ -12,6 +12,7 @@ from data import change_df_for_debug, load_train_df, split_train_val, CustomData
 from data_es import EssayDataset
 from models.base import get_model
 from trainer.trainer_native_pytorch import TrainerNativePytorch
+from utils.env import set_environ
 from utils.seed import set_seed
 from utils.time import now
 from utils.kaggle import create_kaggle_dataset
@@ -60,6 +61,7 @@ def train(config: Config, save_dir: str) -> None:
 
 
 if __name__ == "__main__":
+    set_environ()
     args = prepare_args(prepare_parser())
     config = load_config(args.config_path)
     # config = load_config("config/axiomatic-vulture-ff.yaml")
