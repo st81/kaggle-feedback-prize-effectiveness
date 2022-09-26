@@ -127,23 +127,28 @@ def split_train_val(
 
 
 def change_df_for_debug(
-    train_df: pd.DataFrame, val_df: pd.DataFrame, config: Config
+    train_df: pd.DataFrame,
+    val_df: pd.DataFrame,
+    config: Config,
+    is_pseudo: bool = False,
 ) -> pd.DataFrame:
     def _change_df_for_debug(
         df: pd.DataFrame, config: Config, is_val: bool = False
     ) -> pd.DataFrame:
         if config.dataset.dataset_class == "feedback_dataset":
-            train_df["num_unique_tokens"] = train_df["tokens"].apply(
-                lambda x: len(np.unique(x))
-            )
-            df = pd.DataFrame(
-                [
-                    train_df[train_df["num_unique_tokens"] == 4].iloc[0, :].values
-                    for _ in range(len(train_df))
-                ]
-            )
+            if not is_pseudo:
+                train_df["num_unique_tokens"] = train_df["tokens"].apply(
+                    lambda x: len(np.unique(x))
+                )
+                _df = train_df[train_df["num_unique_tokens"] == 4].iloc[0, :].values
+            else:
+                _df = train_df.loc[0, :].values
+            df = pd.DataFrame([_df for _ in range(len(train_df))])
+
             df.columns = train_df.columns
-            df = df.drop(columns="num_unique_tokens")
+
+            if not is_pseudo:
+                df = df.drop(columns="num_unique_tokens")
         elif config.dataset.dataset_class == "feedback_dataset_essay_ds":
             essay_ids = df["essay_id"].unique()
             idx = 2 if is_val else 1  # Because sklearn.metrics.log_loss raise error
@@ -256,14 +261,16 @@ class CustomDataset(Dataset):
 
     def _read_label(self, idx: int, sample: Dict[str, Any]) -> Dict[str, Any]:
         if self.config.training.is_pseudo:
-            raise NotImplementedError()
+            target = torch.ones(2048, self.config.dataset.num_classes) - 101
         else:
             target = torch.full_like(sample["input_ids"], -100)
 
         word_start_mask = sample["word_start_mask"]
 
         if self.config.training.is_pseudo:
-            raise NotImplementedError
+            target[word_start_mask] = torch.tensor(
+                [x.astype(np.float32) for x in self.labels[idx] if float(x[0]) > -0.01]
+            )
         else:
             target[word_start_mask] = torch.tensor(
                 [x for x in self.labels[idx] if x != self.config.dataset.num_classes]

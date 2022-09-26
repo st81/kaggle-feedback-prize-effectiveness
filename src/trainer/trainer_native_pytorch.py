@@ -272,7 +272,7 @@ class TrainerNativePytorch:
                             for p, t in zip(probs, targets):
                                 probabilities.append(p)
                                 if self.config.training.is_pseudo:
-                                    raise NotImplementedError
+                                    all_targets.append(np.argmax(t))
                                 else:
                                     all_targets.append(t)
                     else:

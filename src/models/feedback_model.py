@@ -22,6 +22,35 @@ def batch_padding(batch, is_test: bool = False):
     return batch
 
 
+# https://www.kaggle.com/code/cpmpml/sub-ensemble-010/notebook?scriptVersionId=94177123
+def glorot_uniform(parameter: torch.Tensor) -> None:
+    nn.init.xavier_uniform_(parameter.data, gain=1.0)
+
+
+class NBMEHead(nn.Module):
+    def __init__(self, input_dim: int, output_dim: int) -> None:
+        super(NBMEHead, self).__init__()
+        self.dropout1 = nn.Dropout(0.1)
+        self.dropout2 = nn.Dropout(0.2)
+        self.dropout3 = nn.Dropout(0.3)
+        self.dropout4 = nn.Dropout(0.4)
+        self.dropout5 = nn.Dropout(0.5)
+        self.classifier = nn.Linear(input_dim, output_dim)
+        glorot_uniform(self.classifier.weight)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # x is B x S x C
+        logits1 = self.classifier(self.dropout1(x))
+        logits2 = self.classifier(self.dropout2(x))
+        logits3 = self.classifier(self.dropout3(x))
+        logits4 = self.classifier(self.dropout4(x))
+        logits5 = self.classifier(self.dropout5(x))
+
+        logits = (logits1 + logits2 + logits3 + logits4 + logits5) / 5
+
+        return logits
+
+
 class Net(nn.Module):
     def __init__(
         self,
@@ -60,7 +89,9 @@ class Net(nn.Module):
         )
         self.loss_fn = nn.CrossEntropyLoss()
         if self.config.architecture.add_wide_dropout:
-            raise NotImplementedError
+            self.token_type_head = NBMEHead(
+                self.backbone.config.hidden_size, self.config.dataset.num_classes
+            )
 
     def forward(self, batch, calculate_loss=True, is_test: bool = False):
         outputs = {}
@@ -85,7 +116,7 @@ class Net(nn.Module):
                 x[obs_id][chunk_mask] = chunk_logits
 
         if self.config.architecture.add_wide_dropout:
-            raise NotImplementedError
+            logits = self.token_type_head(x)
         else:
             if not is_test and self.config.architecture.dropout > 0.0:
                 x = F.dropout(
@@ -109,7 +140,19 @@ class Net(nn.Module):
             new_logits = logits.view(-1, self.config.dataset.num_classes)
 
             if self.config.training.is_pseudo:
-                raise NotImplementedError
+                # targets.shape is (batch_size, max_length in batch, num_classes)
+                new_targets = targets.reshape(-1, self.config.dataset.num_classes)
+
+                # This lines are not existed in original 1st place solution.
+                # I added because loss become around -100 ~ -1000.
+                # I guess the reason is 'new_targets' has float value '-100.0' and it is not ignored by
+                # 'CrossEntropyLoss'
+                new_targets = new_targets[torch.where(new_targets != -100)].reshape(
+                    -1, self.config.dataset.num_classes
+                )
+                new_logits = new_logits[torch.where(new_targets != -100)].reshape(
+                    -1, self.config.dataset.num_classesGF
+                )
             else:
                 new_targets = targets.reshape(-1)
             new_word_start_mask = batch["word_start_mask"].reshape(-1)

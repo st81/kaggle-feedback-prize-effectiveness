@@ -33,7 +33,9 @@ def train(config: Config, save_dir: str) -> None:
         load_train_df(config.dataset.train_df_path), config.dataset.fold
     )
     if config.environment.debug:
-        train_df, val_df = change_df_for_debug(train_df, val_df, config)
+        train_df, val_df = change_df_for_debug(
+            train_df, val_df, config, config.training.is_pseudo
+        )
     print(train_df, val_df, sep="\n")
     print(f"Example label: {train_df[config.dataset.label_columns].values[0]}")
 
@@ -64,7 +66,7 @@ if __name__ == "__main__":
     set_environ()
     args = prepare_args(prepare_parser())
     config = load_config(args.config_path)
-    # config = load_config("config/axiomatic-vulture-ff.yaml")
+    # config = load_config("config/cfg_pseudo_75.yaml")
     training_start_timestamp = now()
     if "wandb" in config.environment.report_to:
         init_wandb(
