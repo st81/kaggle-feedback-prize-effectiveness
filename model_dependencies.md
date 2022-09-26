@@ -131,6 +131,40 @@ flowchart TD
     honest-apple-ff --> pseudo_140_ff_raw.csv
 ```
 
+```mermaid
+flowchart TD
+    train_folded.csv --> oof_151_after_scaling.csv+oof_151_after_scaling_ind_models.csv+first_lvl_ensemble
+    lgb_v0?? --> oof_151_after_scaling.csv+oof_151_after_scaling_ind_models.csv+first_lvl_ensemble
+    olivine-spaniel --> oof_151_after_scaling.csv+oof_151_after_scaling_ind_models.csv+first_lvl_ensemble
+    meteoric-bettong --> oof_151_after_scaling.csv+oof_151_after_scaling_ind_models.csv+first_lvl_ensemble
+    shrewd-rook-3ep --> oof_151_after_scaling.csv+oof_151_after_scaling_ind_models.csv+first_lvl_ensemble
+    axiomatic-vulture --> oof_151_after_scaling.csv+oof_151_after_scaling_ind_models.csv+first_lvl_ensemble
+```
+
+```mermaid
+flowchart TD
+    train_folded.csv --> 2ndstage_lgb_v1
+    oof_151_after_scaling.csv --> 2ndstage_lgb_v1
+```
+
+```mermaid
+flowchart TD
+    train_folded.csv --> 2ndstage_lgb_v2
+    oof_151_after_scaling_ind_models.csv --> 2ndstage_lgb_v2
+```
+
+```mermaid
+flowchart TD
+    train_folded.csv --> 2ndstage_nn_v11_blend151-ff
+    first_lvl_ensemble --> 2ndstage_nn_v11_blend151-ff
+```
+
+```mermaid
+flowchart TD
+    train_folded.csv --> 2ndstage_nn_v8_blend151-ff
+    first_lvl_ensemble --> 2ndstage_nn_v8_blend151-ff
+```
+
 
 not examined yet
 - funky-funk-ff
