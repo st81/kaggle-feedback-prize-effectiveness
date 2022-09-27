@@ -1,0 +1,23 @@
+{
+    "id": "shutotakahashi/fpe-val-4",
+    "title": "fpe-val-4",
+    "code_file": "main.ipynb",
+    "language": "python",
+    "kernel_type": "notebook",
+    "is_private": "true",
+    "enable_gpu": "true",
+    "enable_internet": "true",
+    "dataset_sources": [
+        "shutotakahashi/feedback-prize-effectiveness-st",
+        "shutotakahashi/fpe-code"
+    ],
+    "competition_sources": [
+        "feedback-prize-effectiveness",
+        "feedback-prize-2021"
+    ],
+    "kernel_sources": [
+        "shutotakahashi/ybabakhin-axiomatic-vulture-ff-v2",
+        "shutotakahashi/ybabakhin-shrewd-rook-3ep-ff",
+        "shutotakahashi/pip-wheels-feedback-prize-effectivenes"
+    ]
+}

@@ -335,6 +335,7 @@ class TrainerNativePytorch:
 
         with torch.no_grad():
             for itr in progress_bar:
+                print(" ")
                 data = next(val_it)
                 if self.config.dataset.dataset_class == "feedback_dataset":
                     batch = CustomDataset.batch_to_device(data, self.device)

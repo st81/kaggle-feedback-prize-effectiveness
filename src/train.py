@@ -22,7 +22,7 @@ from utils.kaggle import create_kaggle_dataset
 from custom_logger import init_wandb
 
 
-def _get_raw_dfs() -> Tuple[pd.DataFrame, pd.DataFrame]:
+def _get_raw_dfs(config: Config) -> Tuple[pd.DataFrame, pd.DataFrame]:
     raw_df = pd.read_csv(Path(config.base.input_data_dir) / FILENAME.TRAIN_FOLDED)
     print(raw_df)
     raw_train_df, raw_val_df = split_train_val(
@@ -52,7 +52,7 @@ def train(
     print(f"seed: {config.environment.seed}")
     set_seed(config.environment.seed)
 
-    _, raw_val_df = _get_raw_dfs() if only_val else None, None
+    _, raw_val_df = _get_raw_dfs(config) if only_val else (None, None)
 
     train_df, val_df = split_train_val(
         load_train_df(config.dataset.train_df_path), config.dataset.fold
