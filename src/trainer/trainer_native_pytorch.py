@@ -19,6 +19,7 @@ from data_es import EssayDataset
 from models.feedback_model import Net
 from models.util import load_checkpoint
 from scheduler import get_scheduler
+from utils.kaggle import create_submission
 from utils.seed import set_seed
 from utils.types import PATH
 
@@ -36,6 +37,7 @@ class TrainerNativePytorch:
         model_init: Optional[Callable[[Config], Net]] = None,
         save_dir: Optional[PATH] = None,
         val_df: Optional[pd.DataFrame] = None,
+        raw_val_df: Optional[pd.DataFrame] = None,
     ) -> None:
         if isinstance(eval_dataset, EssayDataset) and val_df is None:
             raise ValueError(
@@ -52,10 +54,10 @@ class TrainerNativePytorch:
         else:
             self.save_dir = None
         self.val_df = val_df
+        self.raw_val_df = raw_val_df
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    def train(self):
-        train_loader = DataLoader(
+        self.train_loader = DataLoader(
             self.train_dataset,
             sampler=None,
             shuffle=False,
@@ -67,10 +69,10 @@ class TrainerNativePytorch:
             worker_init_fn=worker_init_fn,
         )
         print(
-            f"train: dataset {len(self.train_dataset)}, dataloader: {len(train_loader)}"
+            f"train: dataset {len(self.train_dataset)}, dataloader: {len(self.train_loader)}"
         )
         if self.eval_dataset is not None:
-            eval_loader = DataLoader(
+            self.eval_loader = DataLoader(
                 self.eval_dataset,
                 shuffle=False,
                 batch_size=1,
@@ -79,8 +81,11 @@ class TrainerNativePytorch:
                 collate_fn=self.eval_dataset.get_val_collate_fn(self.config),
                 worker_init_fn=worker_init_fn,
             )
-        print(f"eval: dataset {len(self.eval_dataset)}, dataloader: {len(eval_loader)}")
+            print(
+                f"eval: dataset {len(self.eval_dataset)}, dataloader: {len(self.eval_loader)}"
+            )
 
+    def train(self):
         model = self.model_init(self.config)
         model.to(self.device)
 
@@ -156,8 +161,8 @@ class TrainerNativePytorch:
 
             print(f"Epoch: {epoch}")
 
-            progress_bar = tqdm(range(len(train_loader)))
-            tr_it = iter(train_loader)
+            progress_bar = tqdm(range(len(self.train_loader)))
+            tr_it = iter(self.train_loader)
             losses = []
             gc.collect()
             model.train()
@@ -226,8 +231,8 @@ class TrainerNativePytorch:
                 checkpoint = {"model": model.state_dict()}
                 torch.save(checkpoint, self.save_dir / FILENAME.CHECKPOINT)
 
-            progress_bar = tqdm(range(len(eval_loader)))
-            val_it = iter(eval_loader)
+            progress_bar = tqdm(range(len(self.eval_loader)))
+            val_it = iter(self.eval_loader)
 
             model.eval()
             preds = []
@@ -303,6 +308,109 @@ class TrainerNativePytorch:
                 print(f"Validation metric: {metric}")
                 if "wandb" in self.config.environment.report_to:
                     wandb.log({"val_log_loss": metric})
+
+    def validate(self, model_saved_path: PATH, oof_save_dir: PATH) -> None:
+        if self.raw_val_df is None:
+            print(
+                "Warning: Validation results will not be saved because 'raw_val_df' is not provided"
+            )
+        Path(oof_save_dir).mkdir(parents=True, exist_ok=True)
+
+        model = self.model_init(self.config)
+        model.to(self.device).eval()
+
+        d = torch.load(model_saved_path, map_location="cpu")
+        model_weights = d["model"]
+        model_weights = {k.replace("module.", ""): v for k, v in model_weights.items()}
+        model.load_state_dict(collections.OrderedDict(model_weights), strict=True)
+        del d, model_weights
+        gc.collect()
+
+        progress_bar = tqdm(range(len(self.eval_loader)))
+        val_it = iter(self.eval_loader)
+
+        preds = []
+        probabilities = []
+        all_targets = []
+
+        with torch.no_grad():
+            for itr in progress_bar:
+                data = next(val_it)
+                if self.config.dataset.dataset_class == "feedback_dataset":
+                    batch = CustomDataset.batch_to_device(data, self.device)
+                elif self.config.dataset.dataset_class == "feedback_dataset_essay_ds":
+                    batch = EssayDataset.batch_to_device(data, self.device)
+
+                if self.config.environment.mixed_precision:
+                    with autocast():
+                        output_dict = model(batch)
+                else:
+                    output_dict = model(batch)
+
+                if self.config.dataset.dataset_class == "feedback_dataset":
+                    for logits, word_start_mask, target in zip(
+                        output_dict["logits"],
+                        output_dict["word_start_mask"],
+                        output_dict["target"],
+                    ):
+                        # logits.shape: (batch_size * max_length * num_classes)
+                        # word_start_mask.shape: (batch_size * max_length)
+                        # target.shape: (batch_size * max_length)
+                        probs = (
+                            torch.softmax(logits[word_start_mask], dim=1)
+                            .detach()
+                            .cpu()
+                            .numpy()
+                        )  # shape: (num_word_start_mask_true, num_classes)
+                        targets = (
+                            target[word_start_mask].detach().cpu().numpy()
+                        )  # shape: (num_word_start_mask_true, )
+
+                        for p, t in zip(probs, targets):
+                            probabilities.append(p)
+                            if self.config.training.is_pseudo:
+                                all_targets.append(np.argmax(t))
+                            else:
+                                all_targets.append(t)
+                else:
+                    preds.append(
+                        output_dict["logits"]
+                        .float()
+                        .softmax(dim=1)
+                        .detach()
+                        .cpu()
+                        .numpy()
+                    )
+
+            if self.config.dataset.dataset_class == "feedback_dataset":
+                metric = log_loss(
+                    all_targets,
+                    np.vstack(probabilities),
+                    eps=1e-7,
+                    labels=list(range(self.config.dataset.num_classes)),
+                )
+                if self.raw_val_df is not None:
+                    df = create_submission(
+                        self.raw_val_df["discourse_id"], np.vstack(probabilities)
+                    )
+                    df.to_csv(
+                        Path(oof_save_dir)
+                        / FILENAME.oof_filename(
+                            self.config.dataset.fold, self.config.environment.seed
+                        ),
+                        index=False,
+                    )
+            else:
+                preds = np.concatenate(preds, axis=0)
+                metric = log_loss(
+                    self.val_df[self.config.dataset.label_columns].values.argmax(
+                        axis=1
+                    ),
+                    preds,
+                )
+            print(f"Validation metric: {metric}")
+            if "wandb" in self.config.environment.report_to:
+                wandb.log({"val_log_loss": metric})
 
     def predict(
         self, test_dataset: Union[CustomDataset, EssayDataset], model_saved_path: PATH

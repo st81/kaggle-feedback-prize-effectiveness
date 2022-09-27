@@ -1,5 +1,7 @@
 from argparse import ArgumentParser, Namespace
 
+from const import FILENAME
+
 
 def add_system_level_args(parent_parser: ArgumentParser) -> ArgumentParser:
     parser = parent_parser.add_argument_group("system_level")
@@ -15,6 +17,14 @@ def add_system_level_args(parent_parser: ArgumentParser) -> ArgumentParser:
     return parent_parser
 
 
+def add_val_args(parent_parser: ArgumentParser) -> ArgumentParser:
+    parser = parent_parser.add_argument_group("val")
+    parser.add_argument("--model_saved_dir", type=str, default=None)
+    parser.add_argument("--checkpoint_filename", type=str, default=FILENAME.CHECKPOINT)
+    parser.add_argument("--oof_save_dir", type=str, default=".")
+    return parent_parser
+
+
 def prepare_parser() -> ArgumentParser:
     parser = ArgumentParser()
     return parser
@@ -22,4 +32,5 @@ def prepare_parser() -> ArgumentParser:
 
 def prepare_args(parser: ArgumentParser) -> Namespace:
     parser = add_system_level_args(parser)
+    parser = add_val_args(parser)
     return parser.parse_args()

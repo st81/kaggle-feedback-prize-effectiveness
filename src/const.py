@@ -17,5 +17,8 @@ class _FILENAME:
     def __init__(self) -> None:
         pass
 
+    def oof_filename(self, fold: int, seed: int) -> str:
+        return f"oof_fold{fold}_seed{seed}.csv"
+
 
 FILENAME = _FILENAME()
