@@ -21,7 +21,7 @@ def increment_kernel_metadata(filepath: Union[str, Path]) -> None:
     print(metadata)
 
     with open(filepath, "w") as f:
-        json.dump(metadata, f)
+        json.dump(metadata, f, indent=4)
 
 
 if __name__ == "__main__":
