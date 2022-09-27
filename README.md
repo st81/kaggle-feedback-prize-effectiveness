@@ -77,6 +77,9 @@ dataset="fpe-code"
 kaggle datasets download -d shutotakahashi/$dataset -p ../input
 mkdir ../input/$dataset
 unzip -o ../input/$dataset.zip -d ../input/$dataset
+
+dataset="fpe-2022-09-18-004139-cp"
+kaggle kernels output shutotakahashi/$dataset -p ../input
 ```
 
 # Run docker container
