@@ -23,7 +23,7 @@ ERROR: (gcloud.compute.ssh) [/usr/bin/ssh] exited with return code [255].
 run `gcloud compute config-ssh`.
 
 ```sh
-$  gcloud compute config-ssh
+gcloud compute config-ssh
 You should now be able to use ssh/scp with your instances.
 For example, try running:
 
