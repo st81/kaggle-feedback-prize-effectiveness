@@ -57,20 +57,21 @@ class TrainerNativePytorch:
         self.raw_val_df = raw_val_df
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.train_loader = DataLoader(
-            self.train_dataset,
-            sampler=None,
-            shuffle=False,
-            batch_size=self.config.training.batch_size,
-            num_workers=self.config.environment.num_workers,
-            pin_memory=False,
-            collate_fn=self.train_dataset.get_train_collate_fn(self.config),
-            drop_last=self.config.training.drop_last_batch,
-            worker_init_fn=worker_init_fn,
-        )
-        print(
-            f"train: dataset {len(self.train_dataset)}, dataloader: {len(self.train_loader)}"
-        )
+        if self.train_dataset is not None:
+            self.train_loader = DataLoader(
+                self.train_dataset,
+                sampler=None,
+                shuffle=True,
+                batch_size=self.config.training.batch_size,
+                num_workers=self.config.environment.num_workers,
+                pin_memory=False,
+                collate_fn=self.train_dataset.get_train_collate_fn(self.config),
+                drop_last=self.config.training.drop_last_batch,
+                worker_init_fn=worker_init_fn,
+            )
+            print(
+                f"train: dataset {len(self.train_dataset)}, dataloader: {len(self.train_loader)}"
+            )
         if self.eval_dataset is not None:
             self.eval_loader = DataLoader(
                 self.eval_dataset,
@@ -78,7 +79,7 @@ class TrainerNativePytorch:
                 batch_size=1,
                 num_workers=self.config.environment.num_workers,
                 pin_memory=True,
-                collate_fn=self.eval_dataset.get_val_collate_fn(self.config),
+                collate_fn=self.eval_dataset.get_validation_collate_fn(self.config),
                 worker_init_fn=worker_init_fn,
             )
             print(
@@ -215,7 +216,7 @@ class TrainerNativePytorch:
                     progress_bar.set_description(
                         f"lr: {np.round(optimizer.param_groups[0]['lr'], 7)}, loss: {np.mean(losses[-10:]):.4f}"
                     )
-                    print(curr_step)
+                    # print(curr_step)
                     if "wandb" in self.config.environment.report_to:
                         wandb.log(
                             {
@@ -223,9 +224,6 @@ class TrainerNativePytorch:
                                 "train_loss": np.mean(losses[-10:]),
                             }
                         )
-
-                del batch, output_dict, loss
-                gc.collect()
 
             if self.config.training.epochs > 0:
                 checkpoint = {"model": model.state_dict()}

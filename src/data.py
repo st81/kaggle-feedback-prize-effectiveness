@@ -293,7 +293,7 @@ class CustomDataset(Dataset):
         return None
 
     @staticmethod
-    def get_val_collate_fn(config: Config):
+    def get_validation_collate_fn(config: Config):
         return None
 
     @staticmethod

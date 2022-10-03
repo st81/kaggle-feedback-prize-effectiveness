@@ -190,7 +190,7 @@ class EssayDataset(Dataset):
             raise NotImplementedError
 
     @staticmethod
-    def get_val_collate_fn(config: Config):
+    def get_validation_collate_fn(config: Config):
         if config.dataset.group_discourse:
             return EssayDataset.collate_fn
         else:

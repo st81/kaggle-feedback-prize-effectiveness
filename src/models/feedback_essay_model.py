@@ -11,7 +11,7 @@ class DenseCrossEntropy(nn.Module):
     def forward(self, x: torch.Tensor, target: torch.Tensor, weights=None):
         x = x.float()
         target = target.float()
-        logprobs = torch.nn.functional.log_softmax(x, dim=1)
+        logprobs = torch.nn.functional.log_softmax(x, dim=-1)
         loss = -logprobs * target
         loss = loss.sum(-1)
         return loss.mean()
