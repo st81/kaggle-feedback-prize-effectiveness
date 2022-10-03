@@ -1,6 +1,6 @@
 {
-    "id": "shutotakahashi/fpe-val-4",
-    "title": "fpe-val-4",
+    "id": "shutotakahashi/fpe-val-5",
+    "title": "fpe-val-5",
     "code_file": "main.ipynb",
     "language": "python",
     "kernel_type": "notebook",
@@ -16,6 +16,7 @@
         "feedback-prize-2021"
     ],
     "kernel_sources": [
+        "shutotakahashi/fpe-2022-10-03-061604-cp",
         "shutotakahashi/ybabakhin-axiomatic-vulture-ff-v2",
         "shutotakahashi/ybabakhin-shrewd-rook-3ep-ff",
         "shutotakahashi/pip-wheels-feedback-prize-effectivenes"

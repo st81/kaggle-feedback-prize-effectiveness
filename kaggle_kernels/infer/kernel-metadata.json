@@ -17,6 +17,7 @@
         "feedback-prize-effectiveness"
     ],
     "kernel_sources": [
+        "shutotakahashi/fpe-2022-10-03-061604-cp",
         "shutotakahashi/fpe-2022-09-26-034435-cp",
         "shutotakahashi/fpe-2022-09-26-000833-cp",
         "shutotakahashi/fpe-2022-09-25-075239-cp",
