@@ -87,7 +87,7 @@ class Net(nn.Module):
         self.head = nn.Linear(
             self.backbone.config.hidden_size, self.config.dataset.num_classes
         )
-        self.loss_fn = nn.CrossEntropyLoss()
+        self.loss_fn = nn.CrossEntropyLoss(reduction="none")
         if self.config.architecture.add_wide_dropout:
             self.token_type_head = NBMEHead(
                 self.backbone.config.hidden_size, self.config.dataset.num_classes
