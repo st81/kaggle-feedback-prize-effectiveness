@@ -180,22 +180,28 @@ class FeedbackPrize2021Data:
 
 class PseudoData:
     def __init__(
-        self, pseudo_label_path: PATH, old_comp_data_path: PATH, save_dir: PATH
+        self,
+        pseudo_label_path: PATH,
+        train_folded_path: PATH,
+        old_comp_data_path: PATH,
+        save_dir: PATH,
     ) -> None:
         labels = pd.read_csv(pseudo_label_path)
-        self.df = pd.read_csv(old_comp_data_path).merge(labels)
-        print(self.df)
+        self.df = pd.read_csv(train_folded_path)
+        self.df_old = pd.read_csv(old_comp_data_path).merge(labels)
         self.save_dir = save_dir
         Path(self.save_dir).mkdir(parents=True, exist_ok=True)
         self.save_filename = "_".join(pseudo_label_path.split("_")[:3]) + ".pq"
 
     def prepare(self) -> None:
         token_classification_df = create_token_classification_df(
-            self.df, is_pseudo=True
+            self.df_old, is_pseudo=True
         )
         print(token_classification_df)
         token_classification_df.to_parquet(Path(self.save_dir) / self.save_filename)
 
+    def prepare_pseudo_only(self):
+        pass
 
 if __name__ == "__main__":
     args = prepare_args(prepare_parser())
@@ -221,6 +227,7 @@ if __name__ == "__main__":
 
     pseudo_data = PseudoData(
         "pseudo_75_ff_raw.csv",
+        Path(config.base.input_data_dir) / FILENAME.TRAIN_FOLDED,
         Path(config.base.input_data_dir)
         / FILENAME.FEEDBACK_PRIZE_2021_TRAIN_EXCEPT_EFFECTIVE,
         config.base.input_data_dir,
