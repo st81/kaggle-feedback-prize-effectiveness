@@ -1,0 +1,8 @@
+prepare_data_types:
+- oof_ensemble
+oof_configs:
+- oof_saved_dirs: 
+  - output/fpe-val-7/axiomatic-vulture-ff
+  - output/fpe-val-7/axiomatic-vulture-ff-seed2
+- oof_saved_dirs: 
+  - output/fpe-val-8/shrewd-rook-3ep-ff

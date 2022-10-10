@@ -119,3 +119,22 @@ class EnsembleConfig:
 def load_ensemble_configs(path: PATH) -> Tuple[List[EnsembleConfig], Union[str, None]]:
     _c = load_yaml(path)
     return [EnsembleConfig(**c) for c in _c["configs"]], _c.get("pseudo_label_filename")
+
+
+@dataclass
+class OofConfig:
+    oof_saved_dirs: List[str]
+
+
+@dataclass
+class PrepareDataConfig:
+    prepare_data_types: List[str]
+    oof_configs: Optional[List[OofConfig]] = None
+
+
+def load_prepare_data_config(path: PATH) -> PrepareDataConfig:
+    _c = load_yaml(path)
+    if "oof_ensemble" in _c["prepare_data_types"]:
+        oof_configs = [OofConfig(**c) for c in _c["oof_configs"]]
+        prepare_data_config = PrepareDataConfig(_c["prepare_data_types"], oof_configs)
+    return prepare_data_config

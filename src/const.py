@@ -14,6 +14,11 @@ class _FILENAME:
 
     SUBMISSION = "submission.csv"
 
+    OOF_AFTER_SCALING = "oof_151_after_scaling.csv"
+    OOF_AFTER_SCALING_IND_MODELS = "oof_151_after_scaling_ind_models.csv"
+    FIRST_LVL_ENSEMBLE_NPY = "first_lvl_ensemble.npy"
+    FIRST_LVL_ENSEMBLE_PKL = "first_lvl_ensemble.pkl"
+
     def __init__(self) -> None:
         pass
 
