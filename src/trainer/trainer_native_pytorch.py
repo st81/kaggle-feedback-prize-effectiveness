@@ -333,7 +333,7 @@ class TrainerNativePytorch:
 
         with torch.no_grad():
             for itr in progress_bar:
-                print(" ")
+                # print(" ")
                 data = next(val_it)
                 if self.config.dataset.dataset_class == "feedback_dataset":
                     batch = CustomDataset.batch_to_device(data, self.device)
@@ -388,17 +388,6 @@ class TrainerNativePytorch:
                     eps=1e-7,
                     labels=list(range(self.config.dataset.num_classes)),
                 )
-                if self.raw_val_df is not None:
-                    df = create_submission(
-                        self.raw_val_df["discourse_id"], np.vstack(probabilities)
-                    )
-                    df.to_csv(
-                        Path(oof_save_dir)
-                        / FILENAME.oof_filename(
-                            self.config.dataset.fold, self.config.environment.seed
-                        ),
-                        index=False,
-                    )
             else:
                 preds = np.concatenate(preds, axis=0)
                 metric = log_loss(
@@ -410,6 +399,21 @@ class TrainerNativePytorch:
             print(f"Validation metric: {metric}")
             if "wandb" in self.config.environment.report_to:
                 wandb.log({"val_log_loss": metric})
+
+            if self.raw_val_df is not None:
+                _preds = (
+                    np.vstack(probabilities)
+                    if self.config.dataset.dataset_class == "feedback_dataset"
+                    else preds
+                )
+                df = create_submission(self.raw_val_df["discourse_id"], _preds)
+                df.to_csv(
+                    Path(oof_save_dir)
+                    / FILENAME.oof_filename(
+                        self.config.dataset.fold, self.config.environment.seed
+                    ),
+                    index=False,
+                )
 
     def predict(
         self, test_dataset: Union[CustomDataset, EssayDataset], model_saved_path: PATH
