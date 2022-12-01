@@ -1,6 +1,7 @@
 --extra-index-url https://download.pytorch.org/whl/cu113
 numpy
 pandas
+lightgbm
 torch==1.11.0+cu113
 transformers==4.20.1
 scikit-learn

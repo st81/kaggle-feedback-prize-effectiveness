@@ -19,6 +19,8 @@ class _FILENAME:
     FIRST_LVL_ENSEMBLE_NPY = "first_lvl_ensemble.npy"
     FIRST_LVL_ENSEMBLE_PKL = "first_lvl_ensemble.pkl"
 
+    TRAIN_LGB = "train_lgb.csv"
+
     def __init__(self) -> None:
         pass
 
