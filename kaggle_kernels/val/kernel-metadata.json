@@ -1,6 +1,6 @@
 {
-    "id": "shutotakahashi/fpe-val-8",
-    "title": "fpe-val-8",
+    "id": "shutotakahashi/fpe-val-10",
+    "title": "fpe-val-10",
     "code_file": "main.ipynb",
     "language": "python",
     "kernel_type": "notebook",
@@ -16,6 +16,10 @@
         "feedback-prize-2021"
     ],
     "kernel_sources": [
+        "shutotakahashi/fpe-2022-10-11-004023-cp",
+        "shutotakahashi/fpe-2022-10-11-012541-cp",
+        "shutotakahashi/fpe-2022-10-11-000646-cp",
+        "shutotakahashi/fpe-2022-10-10-233423-cp",
         "shutotakahashi/fpe-2022-10-04-091930-cp",
         "shutotakahashi/fpe-2022-10-04-083227-cp",
         "shutotakahashi/fpe-2022-10-04-051210-cp",
